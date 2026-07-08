@@ -1,159 +1,409 @@
 # Mentrovia V1 Working Plan
 
 Date: 2026-07-08
-Scope: documentation and scan pass only. No application code was changed.
+Scope: comprehensive documentation and scan pass. No application code changes in this pass.
 
 ## Current Read
 
-The original V1 plan in `docs/v1-beta-agent-plan.md` defines 8 build phases and 10 agent tickets. The current codebase is not simply "done through Phase 2"; it has meaningful Phase 3 groundwork and a partial Phase 7/image-pipeline branch in progress. The main missed areas are still Phase 4, Phase 5, Phase 6, and most productized Phase 7/8 work.
+The codebase is now substantially beyond the previous snapshot. The photo pipeline/Projects pass has landed: routes, controllers, Livewire UI, models, policies, migrations, provider registration, image gateways, chooser/arbiter, jobs, derivative worker, env placeholders, and test coverage are all present.
 
-The worktree is active and includes many untracked or modified files. Treat this document as a status snapshot, not a commit boundary.
+The core V1 business-advisor product is still incomplete in the same broad areas as before: recurring tasks, compliance-text LLM validation, Advisor Q&A, admin knowledge workflows, and text-based branding/advertising generation. The photo studio is a strong Phase 7-adjacent branch, but it does not replace the original brand/ad text generator work.
+
+Git status was clean at the start of this scan.
+
+## Verification Snapshot
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| `php artisan test` | Pass | 167 tests, 703 assertions. |
+| `vendor/bin/phpstan analyse --error-format=table` | Pass | 0 errors. |
+| `composer test` | Fails at Pint | Stops before tests because existing auth/settings tests need `single_blank_line_at_eof` formatting. |
+| `php artisan route:list --except-vendor` | Pass | 10 app routes: home, dashboard, intake, roadmap, projects index/show, settings pages. |
+| `php artisan photos:image-chooser --image-input --count=3` | Fails locally | No profiled model satisfies current real config/key/threshold state; tests cover chooser behavior with fake config/keys. |
+| `npm run build` | Not verified | WSL resolves `npm` to Windows Node, which fails on UNC path/native Rolldown binding. Needs a Linux Node runtime or refreshed install under the runtime used for builds. |
+| Static debug scan | Mostly clean | Only expected CLI `console.log(JSON.stringify(...))` in the Sharp worker; no React/TypeScript surface found. |
+
+## Completed
+
+### Foundation / Auth / Layout
+
+- Laravel 13 app with Fortify auth, email verification, password confirmation, password reset, profile update, password update, 2FA, and account deletion tests.
+- App layout, sidebar navigation, Flux UI settings pages, mobile/desktop user menus.
+- Stream A controller conversion is in place:
+  - `DashboardController`
+  - `RoadmapController`
+  - `Business\IntakeController`
+  - settings controllers
+  - Blade page wrappers that embed Livewire only where needed.
+- Route names used by navigation and redirects are stable.
+
+### Business Intake / Profile
+
+- `businesses` and `business_profiles` schema exists.
+- Business intake is a 5-step Livewire wizard with Texas-only guardrail.
+- Intake persists structured profile fields for stage, entity, location, taxable sales, EIN, banking, bookkeeping, payroll, revenue ranges, first sale/employee dates, and confidence.
+- `StageClassifier` deterministically maps users into the four V1 stages.
+- Business model casts core intake fields to enums and exposes helper methods such as `displayName()`, `isOperating()`, and `mayHaveTaxableSales()`.
+- Tests cover guest redirect, wizard render, step validation, Texas guardrail, save/update, hydration, and stage classification.
+
+### Dashboard / Roadmap / Risk Flags
+
+- Dashboard shows setup score, risk flags, missing setup items, next actions, and disclaimer language.
+- `BusinessHealth` computes current setup score and risk flags without persisting stale derived state.
+- `RoadmapBuilder` generates a static but profile-aware roadmap across all planned roadmap phases:
+  - Foundation
+  - Legal setup
+  - Taxes
+  - Banking
+  - Accounting
+  - Payroll
+  - Owner pay
+  - Branding
+  - Advertising
+  - Growth readiness
+- Roadmap logic reacts to business profile fields for EIN, DBA, formal entity status, sales tax exposure, banking, bookkeeping, employees/payroll, contractors, and filing confidence.
+- Tests cover roadmap route access, phase rendering, item status logic, next actions, and priority ordering.
+
+### Compliance Knowledge Cache
+
+- `knowledge_articles` and `knowledge_sources` schema exists.
+- `KnowledgeArticle` / `KnowledgeSource` models, factories, enums, and casts exist.
+- `KnowledgeArticleSeeder` loads YAML-front-matter markdown articles idempotently.
+- 20 Texas-focused seed articles exist, matching the original V1 seed list:
+  - starting a Texas business
+  - sole proprietor vs LLC
+  - DBA/assumed name
+  - sales tax permit
+  - franchise tax
+  - first employee
+  - banking separation
+  - bookkeeping
+  - owner pay variants
+  - contractor/1099
+  - weekly/monthly/quarterly/yearly task articles
+  - brand kit starter
+  - first 30 days advertising
+  - when to hire professionals
+- Tests enforce official HTTPS sources, disclaimers, verification timestamps, idempotence, and no hard-coded percentages/dollar thresholds in articles.
+
+### Photo Projects / AI Photo Studio
+
+- Project/photo schema exists:
+  - `projects`
+  - `project_user`
+  - `photo_generation_batches`
+  - `photos`
+- Models and factories exist for `Project`, `Photo`, and `PhotoGenerationBatch`.
+- `ProjectPolicy` gates view, create, update, share, and delete:
+  - owners can view/edit/share/delete
+  - read-share users can view
+  - write-share users can view/edit/generate/upload but not share/delete.
+- `User` has project/shared-project relationships.
+- Project routes and controller actions exist:
+  - `projects.index`
+  - `projects.show`
+- Sidebar includes Projects navigation.
+- `Livewire\Projects\Index` supports search, pagination, and project creation.
+- `Livewire\Projects\Show` supports:
+  - multi-upload
+  - 25 MB Livewire temporary upload allowance
+  - image type/dimension validation
+  - optional user notes
+  - background derivative processing
+  - auto-captioning for uncaptioned uploads
+  - uploaded-photo selection
+  - generation batch creation
+  - top-3 model fan-out
+  - polling while batches/photos are processing
+  - read/write sharing by email
+  - unsharing
+  - generated-photo gallery
+  - derivative variant selection
+  - download URLs
+  - deletion of generated image sets
+  - retrying derivative processing.
+- Photo storage config uses separate `uploaded_` and `generated_` prefixes.
+- `.env.example` includes S3 endpoint/url placeholders, provider keys, and photostudio/image chooser config.
+- `config/livewire.php` is published and raises temporary upload max to `26624`.
+- `sharp` is listed in `package.json`.
+- Node/Sharp derivative worker exists at `resources/js/image-processing/create-portfolio-derivatives.mjs`.
+- `PhotoDerivativeService` normalizes images, writes derivatives, records metadata, and leaves failed photos retryable.
+- `PrunePhotoOriginalsCommand` exists and is scheduled daily.
+
+### Image AI Pipeline
+
+- Custom AI image providers are registered in `AppServiceProvider`:
+  - OpenRouter override with cost-aware image gateway
+  - Replicate
+  - Stability
+- `config/ai.php` includes `replicate` and `stability` provider stanzas.
+- `config/photostudio.php` includes:
+  - storage prefixes
+  - provider/model controls
+  - processing settings
+  - analysis model
+  - chooser weights and requirements
+  - LLM arbiter settings
+  - BYOK external keys
+  - image model catalog.
+- AI image components exist:
+  - `ImageModelCatalog`
+  - `ImageModelChooser`
+  - `ImageModelArbiter`
+  - `ImageModelCandidate`
+  - `ImageRequirements`
+  - typed exceptions
+  - cost-aware response wrapper.
+- Vision agents exist:
+  - `PhotoBatchAnalyst`
+  - `PhotoDescriber`.
+- Jobs exist:
+  - `RunPhotoGenerationBatch`
+  - `GeneratePhotoWithModel`
+  - `GeneratePhotoDerivatives`
+  - `DescribeUploadedPhoto`.
+- CLI debug tool exists:
+  - `photos:image-chooser`.
+- Tests cover:
+  - chooser ranking and hard filters
+  - arbiter behavior
+  - OpenRouter/Replicate/Stability gateways
+  - batch analysis, retry/fallback, mode selection, fan-out
+  - generated photo persistence and derivative dispatch
+  - upload validation and captioning behavior
+  - derivative worker service with fake process
+  - generated gallery behavior
+  - project creation/search/access
+  - project sharing permissions.
 
 ## Phase Status
 
-| Phase | Status | What is done | What remains |
+| Phase | Status | Completed | Remaining |
 | --- | --- | --- | --- |
-| Phase 1 - Foundation | Mostly complete | Laravel app, Fortify auth, business intake schema, dashboard, controller/Blade page routing, static roadmap, tests. | Fix Pint blocker; keep Stream A regression tests green after later changes. |
-| Phase 2 - Compliance Knowledge Cache | Partial | `KnowledgeArticle` / `KnowledgeSource` schema, 20 seeded Texas articles, source metadata, verification timestamps, disclaimer tests. | No CRUD/admin UI, no public article display, no validation status UI, no stale-source workflow. |
-| Phase 3 - Personalized Roadmap | Partial | `StageClassifier`, `BusinessHealth`, roadmap grouping, sales tax/banking/accounting/payroll triggers, owner-pay item. | Entity classifier is implicit, owner-pay routing is only a roadmap item, roadmap is still a static template, no source freshness on roadmap items. |
-| Phase 4 - Recurring Task System | Not started | Weekly/monthly/quarterly/yearly concepts exist as seed articles and one roadmap item. | Task templates, generated user tasks, due rules, dashboard reminders, completion tracking. |
-| Phase 5 - LLM Validation Pipeline | Not started for compliance text | `laravel/ai` is installed, AI conversation tables exist, image chooser has partial arbiter code. | OpenRouter text validation roles, reviewer prompts, final judge, validation logs, cache approval statuses, admin review queue. Reference ChapterEcho writing-assist provider selection before designing text generation. |
-| Phase 6 - Advisor Q&A | Not started | `agent_conversations` migration exists. | Ask Advisor UI, article retrieval, profile retrieval, validation gate, session history, answer rendering. |
-| Phase 7 - Branding and Advertising | Split/partial | Seed articles for brand kit and first 30 days advertising; image pipeline port is partially present. | Text-based brand/ad generators, brand kit storage, UI, image project UI, share/download flows, working provider registration. |
-| Phase 8 - Beta Hardening | Partial | Disclaimers appear in key pages; some jobs log warnings. | Error states, feedback button, stale-answer handling, admin dashboard, full production verification, queue/runtime docs. |
+| Phase 1 - Foundation | Mostly complete | App, auth, intake, dashboard, controller/Blade routing, static roadmap, seed knowledge, tests. | Fix Pint formatting so `composer test` is green; add browser smoke once Node/build runtime works. |
+| Phase 2 - Compliance Knowledge Cache | Partial | Models, sources, seed articles, source metadata, verification timestamps, disclaimer coverage. | CRUD/admin UI, public/article display, stale-source states, validation status display, manual refresh/review workflow. |
+| Phase 3 - Personalized Roadmap | Partial | Stage classifier, profile-aware roadmap, risk flags, setup score, trigger logic for sales tax/banking/accounting/payroll/contractors/owner pay. | Roadmap is still static-template driven; no persisted/generated roadmap items, no source freshness on items, no deeper module routing beyond page sections/items. |
+| Phase 4 - Recurring Task System | Not started | Weekly/monthly/quarterly/yearly task content exists as seed articles and a roadmap item. | Task templates, business-specific task generation, recurrence rules, dashboard reminders, completion tracking, notes, due dates. |
+| Phase 5 - LLM Validation Pipeline | Not started for compliance text | Laravel AI installed, provider groundwork exists, AI conversation tables exist, image chooser uses an arbiter pattern. | Text-validation model roles, provider selection, validator prompts, final judge, validation logs, cache approval statuses, stale handling, admin review queue. |
+| Phase 6 - Advisor Q&A | Not started | AI conversation tables exist. | Ask Advisor UI, profile/article retrieval, validation gate, structured answer generation, session history, source/caveat display. |
+| Phase 7 - Branding and Advertising | Partial / split | Seed articles and full AI Photo Studio/Projects pipeline exist. | Text brand kit generator, name/tagline/voice/color/social bio generation, ad copy/social post/landing page generation, brand/ad storage and UI. |
+| Phase 8 - Beta Hardening | Partial | Disclaimers, many tests, PHPStan clean, logging in AI/photo jobs, error recording for processing failures. | Full `composer test`, frontend build, browser smoke, user feedback button, stale-answer UX, admin dashboard, deployment/runtime docs, real-provider/bucket E2E. |
 
 ## Ticket Status
 
 | Ticket | Status | Notes |
 | --- | --- | --- |
-| 1 - Business Intake and Profile Schema | Mostly complete | Intake flow, models, factories, classifier, tests exist. |
-| 2 - Texas Knowledge Article Cache | Partial | Seed/cache model exists; CRUD/admin missing. |
-| 3 - Personalized Roadmap Generator | Partial | Static but profile-aware roadmap exists. |
-| 4 - Recurring Task System | Not started | Needs new task tables/models/services/UI. |
-| 5 - OpenRouter Validation Pipeline | Not started | Keep separate from the image chooser. |
-| 6 - Advisor Q&A Interface | Not started | AI conversation tables alone are not enough. |
-| 7 - Owner Pay Decision Module | Not started | Current owner-pay work is roadmap/article content only. |
-| 8 - Banking Setup Module | Not started as module | Current work is risk flags, article content, and roadmap item. |
-| 9 - Branding Kit Generator | Not started | Use `docs/sample-static-site` for UI/brand examples. |
-| 10 - Advertising Generator | Partial via image pipeline, not productized | Image pipeline is incomplete; ad text generation not implemented. |
+| 1 - Business Intake and Profile Schema | Mostly complete | Intake/schema/classification are implemented and tested. |
+| 2 - Texas Knowledge Article Cache | Partial | Cache + seeding done; CRUD/admin/public display missing. |
+| 3 - Personalized Roadmap Generator | Partial | Profile-aware static roadmap done; deeper dynamic/persistent roadmap not done. |
+| 4 - Recurring Task System | Not started | No task tables/services/UI yet. |
+| 5 - OpenRouter Validation Pipeline | Not started | Image arbiter is separate; compliance text validators/final judge are missing. |
+| 6 - Advisor Q&A Interface | Not started | Conversation tables exist only. |
+| 7 - Owner Pay Decision Module | Not started as module | Article + roadmap item exist; no decision flow/comparison UI. |
+| 8 - Banking Setup Module | Not started as module | Article + roadmap/risk logic exist; no banking checklist flow. |
+| 9 - Branding Kit Generator | Not started | Use `docs/sample-static-site` for visual/content examples; reference ChapterEcho text pipeline patterns. |
+| 10 - Advertising Generator | Partial | Photo Studio covers image asset generation; ad text/social/landing page generation missing. |
 
-## ✅ Looks Good
+## Remaining Work
 
-- Stream A controller conversion exists for dashboard, roadmap, business intake, and settings pages.
-- Existing HTTP/Livewire tests pass directly: 86 tests, 472 assertions.
-- Business intake is Texas-guarded, validates step-by-step, persists profile data, and classifies stages.
-- Roadmap covers all 10 planned roadmap phases and reacts to profile fields for EIN, payroll, sales tax, banking, bookkeeping, and owner pay.
-- Knowledge seeding is idempotent, source-backed, and covered by tests that enforce official HTTPS sources and standard disclaimers.
-- `job_batches` exists and the current database reports the project/photo migrations as run.
-- No React or TypeScript surface was found, so React/hooks and TS-specific review items are not applicable yet.
+### 0. Baseline / Verification Cleanup
 
-## ⚠️ Issues Found
+1. Run Pint or otherwise fix final blank lines in the listed auth/settings tests so `composer test` can reach PHPStan/Pest.
+2. Install or expose a Linux Node runtime in WSL, or reinstall `node_modules` under the runtime used for builds, then rerun `npm run build`.
+3. Add a lightweight browser smoke pass once the frontend build works:
+   - home
+   - dashboard
+   - intake
+   - roadmap
+   - projects index
+   - project show
+   - settings pages.
+4. Keep the current green checks as the floor:
+   - `php artisan test`
+   - `vendor/bin/phpstan analyse --error-format=table`.
 
-- **CRITICAL** `app/Models/Photo.php:8` and `app/Models/PhotoGenerationBatch.php:8` - Pipeline jobs call constants, relationships, casts, helpers, and factory states that these models do not define.
-  - Fix: Complete `Photo` and `PhotoGenerationBatch` per Stream B5 before wiring UI or running queues.
+### 1. Real Photo Studio E2E
 
-- **CRITICAL** `app/Jobs/GeneratePhotoWithModel.php:120` and `app/Jobs/GeneratePhotoWithModel.php:124` - Generated photo creation uses old Keystone column names (`prompt`, `estimated_cost_usd`) while the Mentrovia migration has `text`, `text_source`, and `cost_usd`.
-  - Fix: Map generated prompt to `text`, `PhotoTextSource::Auto`, and `cost_usd`/`cost_source`.
+1. Add real bucket name/credentials in local/private env.
+2. Verify signed URLs against the actual S3-compatible endpoint.
+3. Verify `AWS_URL` fallback behavior for stores that do not support presigned GETs.
+4. Run queue worker with timeout greater than generation HTTP timeout.
+5. Run the complete flow with real keys:
+   - create project
+   - upload captioned photo
+   - upload uncaptioned photo
+   - derivative generation
+   - auto-caption
+   - generate top 3
+   - gallery variants
+   - download
+   - share read-only
+   - verify read-only restrictions.
+6. Decide whether `photos:image-chooser --image-input --count=3` should work without real provider keys or remain a real-config diagnostic.
 
-- **CRITICAL** `app/Jobs/DescribeUploadedPhoto.php:31` and `app/Jobs/DescribeUploadedPhoto.php:47` - Auto-captioning reads/writes `description` and `description_source`, but the accepted schema is `text` and `text_source`.
-  - Fix: Rename to the Mentrovia fields and use `PhotoTextSource::Auto`; parse `AgentResponse` through its structured output API.
+### 2. Compliance Knowledge Productization
 
-- **HIGH** `app/Providers/AppServiceProvider.php:16` and `config/ai.php:135` - Custom AI providers/gateways are present, but `Ai::extend(...)` registration and `replicate` / `stability` config stanzas are missing.
-  - Fix: Register the ported providers and add config/env entries before any real image generation test.
+1. Add knowledge article index/detail UI.
+2. Add source display and last-verified display wherever content is shown.
+3. Add admin CRUD for knowledge articles and sources.
+4. Add stale/needs-review state handling.
+5. Add manual "mark stale" and "request revalidation" actions.
+6. Add tests for source/caveat display and stale article UX.
 
-- **HIGH** `package.json:9` and `resources/js/image-processing/create-portfolio-derivatives.mjs:1` - The derivative worker imports `sharp`, but `sharp` is not listed in dependencies.
-  - Fix: Add `sharp` only when dependency changes are approved.
+### 3. Recurring Task System
 
-- **HIGH** `app/Policies/ProjectPolicy.php:14` - The generated policy currently denies every project action.
-  - Fix: Implement owner/read/write/share/delete rules before adding project routes or UI.
+1. Create task template schema for weekly/monthly/quarterly/yearly tasks.
+2. Create generated business task schema.
+3. Add recurrence/due-rule model.
+4. Generate tasks from business profile:
+   - entity type
+   - employees/payroll
+   - sales tax exposure
+   - contractors
+   - banking/bookkeeping maturity.
+5. Add dashboard reminders and upcoming tasks.
+6. Add completion tracking, notes, and history.
+7. Add tests for generation, due dates, completion, and profile changes.
 
-- **HIGH** `routes/web.php:10` and `app/Http/Controllers/ProjectController.php:5` - Project routes and controller actions are not implemented.
-  - Fix: Add `projects.index` and `projects.show` routes/controllers only after models/policy are complete.
+### 4. Compliance Text LLM Validation Pipeline
 
-- **HIGH** `app/Livewire/Projects` - Missing entirely.
-  - Fix: Build `Projects\Index` and `Projects\Show` after the model layer is stable.
+1. Design model/provider roles from ChapterEcho's writing-assist/provider-manager pattern instead of starting from scratch.
+2. Keep this distinct from the image chooser:
+   - low-cost factual reviewer
+   - contradiction reviewer
+   - user-fit reviewer
+   - final judge.
+3. Add validation-run and validation-vote schema.
+4. Store prompts, model names, raw structured responses, aggregate verdicts, confidence, and concerns.
+5. Add strict structured outputs for validators and judge.
+6. Add deterministic guardrail pass for legal/tax/payroll claims.
+7. Add cache approval statuses:
+   - approved current
+   - approved with caveats
+   - needs source refresh
+   - needs professional review
+   - conflicting sources
+   - not enough information
+   - admin review required.
+8. Add tests using Laravel AI agent fakes and `preventStrayPrompts`.
 
-- **HIGH** `config/livewire.php` - Missing, so the planned 25 MB temp upload override is not in place.
-  - Fix: Publish Livewire config and raise `temporary_file_upload.rules` to include the 25 MB max.
+### 5. Advisor Q&A
 
-- **HIGH** `app/Ai/Gateway/ReplicateImageGateway.php:138` and `app/Ai/Gateway/StabilityImageGateway.php:53` - PHPStan reports calls to undefined `Laravel\Ai\Files\Image::content()`.
-  - Fix: Re-check laravel/ai 0.9 file APIs and update the gateway port before gateway tests.
+1. Build Ask Advisor interface.
+2. Retrieve the authenticated user's business profile.
+3. Retrieve matching knowledge articles and sources.
+4. Route high-risk/stale content through validation before answering.
+5. Generate structured answer with:
+   - direct answer
+   - checklist
+   - caveats
+   - confidence
+   - source freshness
+   - professional review flags.
+6. Persist session/message history.
+7. Add refusal/escalation behavior for insufficient facts.
+8. Add tests for retrieval, validation gate, answer shape, and user scoping.
 
-- **MEDIUM** `.env.example:59` - Missing required AI/photo env placeholders (`AWS_URL`, `AWS_ENDPOINT`, `OPENROUTER_API_KEY`, `REPLICATE_API_TOKEN`, `STABILITY_API_KEY`, `PHOTOSTUDIO_*`, `AI_IMAGE_CHOOSER_*`).
-  - Fix: Add placeholders when the image pipeline implementation ticket resumes.
+### 6. Owner Pay Module
 
-- **MEDIUM** `routes/console.php:1` - `PrunePhotoOriginalsCommand` exists but is not scheduled.
-  - Fix: Add the daily schedule after `Photo` model helpers/constants exist.
+1. Build owner-pay comparison UI for:
+   - draws
+   - distributions
+   - retained earnings/profit
+   - guaranteed payments
+   - W-2 salary
+   - dividends
+   - reimbursements/accountable plan.
+2. Gate recommendations on entity/tax status.
+3. Add CPA review prompts.
+4. Link the module from roadmap items.
+5. Add tests for entity-specific option visibility and caveats.
 
-- **MEDIUM** `tests/Feature/Auth/*` and `tests/Feature/Settings/*` - `composer test` is blocked by Pint `single_blank_line_at_eof` failures in existing tests.
-  - Fix: Run Pint in a formatting ticket; do not mix it into feature work unless intentionally touching those files.
+### 7. Banking Setup Module
 
-- **MEDIUM** `tests/Feature/Ai` / `tests/Feature/Projects` / `tests/Feature/Photos` - No image pipeline, chooser, gateway, project UI, sharing, upload, caption, or derivative tests are present.
-  - Fix: Port/add the planned test suites before declaring Stream B complete.
+1. Build banking checklist UI.
+2. Include "what to bring to the bank" by structure.
+3. Add account separation risk warning.
+4. Add tax/sales-tax/payroll reserve account suggestions.
+5. Link from dashboard risk flags and roadmap.
+6. Add tests for profile-based checklist differences.
 
-- **LOW** `resources/js/image-processing/create-portfolio-derivatives.mjs:82` - The script prints JSON with `console.log`. This is expected CLI stdout, not browser debug logging.
-  - Fix: Leave as-is unless the worker protocol changes.
+### 8. Branding Kit Generator
 
-## Verification Snapshot
+1. Use `docs/sample-static-site` as the visual/content reference for Mentrovia UI/brand examples.
+2. Reference ChapterEcho's writing-assist design for text provider selection, fallback, pass orchestration, and output parsing.
+3. Use the `avoid-ai-writing.md` guardrail for generated marketing prose.
+4. Generate:
+   - business name ideas
+   - tagline options
+   - brand positioning
+   - tone/voice guide
+   - color palette
+   - logo/image prompt pack
+   - social bios.
+5. Store generated brand kits.
+6. Add UI to review/regenerate/save selections.
+7. Add tests for provider fakes, persistence, and user scoping.
 
-- `php artisan test` - passed, 86 tests / 472 assertions.
-- `composer test` - failed before Pest because Pint check reported missing final blank lines in existing test files.
-- `vendor/bin/phpstan analyse --error-format=table` - failed with 50 reported errors, concentrated in the incomplete image pipeline port.
-- `php artisan route:list --except-vendor` - 8 app routes; no project routes.
-- `php artisan photos:image-chooser --image-input --count=3` - failed with no profiled model satisfying requirements/API-key state.
-- Boost database schema/status - core, knowledge, AI conversation, project, photo, and pivot migrations are currently marked as run.
+### 9. Advertising Generator
 
-## Recommended Next Plan
+1. Generate:
+   - ad angles
+   - Facebook/Instagram copy
+   - Google ad text concepts
+   - social posts
+   - flyer copy
+   - image prompt variants
+   - landing page outline
+   - first 30 days marketing plan.
+2. Reuse brand kit context when available.
+3. Optionally connect saved prompts to the Photo Studio pipeline.
+4. Add tests for structured output and ownership.
 
-### Step 0 - Freeze the baseline
+### 10. Beta Hardening
 
-1. Decide whether the current image-pipeline work is owned by the other agent or by this thread before editing overlapping files.
-2. Run Pint intentionally in a small formatting-only commit/ticket to unblock `composer test`.
-3. Keep `php artisan test`, PHPStan, route list, and the image chooser command as the checkpoint set for each later phase boundary.
+1. Add user feedback/report issue action.
+2. Add visible stale-answer handling.
+3. Add admin review dashboard.
+4. Add queue/runtime deployment notes:
+   - queue worker timeout
+   - scheduler
+   - Node/Sharp runtime
+   - S3-compatible storage expectations.
+5. Add browser smoke tests or manual QA checklist.
+6. Add empty/error/loading states across every user-facing workflow.
+7. Add rate limiting or quota controls for expensive AI actions.
+8. Add cost reporting/guardrails for image and future text generation.
+9. Verify accessibility and responsive behavior for Projects UI and future modules.
 
-### Step 1 - Finish and stabilize Stream B foundation
+## Current Risks / Blockers
 
-1. Complete `Photo`, `PhotoGenerationBatch`, `Project`, `User` relationships, factories, and `ProjectPolicy`.
-2. Align every job with the Mentrovia schema (`text`, `text_source`, `cost_usd`) and enums.
-3. Add provider registration/config/env placeholders.
-4. Publish Livewire config for 25 MB uploads.
-5. Add `sharp` only with dependency-change approval.
-6. Add/port model, policy, gateway, chooser, job, derivative, and command tests.
+- `composer test` is not green until Pint formatting is fixed in existing tests.
+- Frontend build is not verified in this WSL environment because Node/npm resolves to Windows tooling and native bindings mismatch.
+- Real Photo Studio E2E is blocked on actual bucket credentials/provider keys and queue runtime verification.
+- `photos:image-chooser` currently fails under real local config/key state despite tests proving selection logic.
+- Compliance guidance remains source-seeded but not LLM-validated or admin-refreshable.
+- Advisor Q&A is not built; AI conversation tables alone are only groundwork.
+- Recurring task calendar is not built; current task content is educational/static.
 
-### Step 2 - Build Projects UI
+## Definition Of Done Delta
 
-1. Add project routes/controllers.
-2. Build `Livewire\Projects\Index`.
-3. Build `Livewire\Projects\Show` for upload, generation, gallery, polling, sharing, download, retry.
-4. Add sidebar navigation.
-5. Verify with feature tests and one end-to-end local queue run using fakes first, then real bucket/keys when available.
+Already satisfied:
 
-### Step 3 - Return to missed V1 core phases
+- A user can create a business profile.
+- The app can classify their stage.
+- The app can generate a profile-aware roadmap.
+- Texas-first cached compliance content exists with source metadata and last-verified dates.
+- The app can create photo projects, upload photos, process derivatives, share projects, and run an AI image-generation pipeline in tested/faked conditions.
 
-1. Phase 4 recurring tasks: tables, templates, generator, completion tracking, dashboard reminders.
-2. Phase 5 compliance text validation: model roles, validators, final judge, validation logs, approval statuses, stale handling.
-3. Phase 6 advisor Q&A: retrieve business context and cached articles before answering; persist sessions.
-4. Reference `/home/brian/www/ChapterEcho/docs/writing-assist-design.md` and `/home/brian/www/ChapterEcho/resources/writing/guidelines/avoid-ai-writing.md` for text provider selection, pass orchestration, fallback design, and prose quality guardrails.
+Still required for V1 beta:
 
-### Step 4 - Product modules
-
-1. Owner pay decision module.
-2. Banking setup module.
-3. Branding kit generator.
-4. Advertising generator.
-5. Use `docs/sample-static-site` as the visual/content reference when building UI/UX for brand-facing pages.
-
-### Step 5 - Beta hardening
-
-1. Admin knowledge CRUD and review queue.
-2. Stale answer handling and visible source freshness.
-3. User feedback/reporting.
-4. Queue timeout/runtime documentation.
-5. Full `composer test` green, PHPStan green, image chooser command green, and browser smoke pass.
-
-## Open Decisions / Blockers
-
-- New photo bucket name and credentials are still required before real E2E image generation.
-- Dependency approval is needed for `sharp`.
-- Ownership of the current image pipeline branch/workstream should be clarified to avoid agents overwriting each other.
-- Text-generation model selection should be planned from ChapterEcho's writing assistant/provider manager pattern instead of starting from scratch.
+- Generated weekly/monthly/quarterly/yearly tasks.
+- Display/browse cached compliance content in-product.
+- LLM validation for high-risk compliance text.
+- Caveat/source freshness display on generated answers.
+- Advisor Q&A.
+- Brand kit text generator.
+- Advertising text generator.
+- Admin stale/revalidation workflow.
+- Full `composer test`, frontend build, browser smoke, and real-provider Photo Studio E2E.
