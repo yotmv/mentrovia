@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Knowledge\ArticleController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RoadmapController;
+use App\Models\KnowledgeArticle;
 use Illuminate\Support\Facades\Route;
 
 Route::view('/', 'welcome')->name('home');
@@ -17,6 +18,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::get('knowledge/articles', [ArticleController::class, 'index'])->name('knowledge.articles.index');
     Route::get('knowledge/articles/{slug}', [ArticleController::class, 'show'])->name('knowledge.articles.show');
+});
+
+Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::view('/knowledge/articles', 'pages.admin.knowledge.index')->name('knowledge.articles.index');
+    Route::view('/knowledge/articles/create', 'pages.admin.knowledge.form')->name('knowledge.articles.create');
+    Route::get('/knowledge/articles/{article}/edit', function (KnowledgeArticle $article) {
+        return view('pages.admin.knowledge.form', ['article' => $article]);
+    })->name('knowledge.articles.edit');
 });
 
 require __DIR__.'/settings.php';

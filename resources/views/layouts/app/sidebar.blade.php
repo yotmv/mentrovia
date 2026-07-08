@@ -28,6 +28,14 @@
                         {{ __('Knowledge') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
+
+                @if (auth()->user()?->is_admin)
+                    <flux:sidebar.group :heading="__('Admin')" class="grid">
+                        <flux:sidebar.item icon="shield-check" :href="route('admin.knowledge.articles.index')" :current="request()->routeIs('admin.knowledge.*')" wire:navigate>
+                            {{ __('Knowledge Admin') }}
+                        </flux:sidebar.item>
+                    </flux:sidebar.group>
+                @endif
             </flux:sidebar.nav>
 
             <flux:spacer />
