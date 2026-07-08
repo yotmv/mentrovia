@@ -115,6 +115,16 @@ class Business extends Model
     }
 
     /**
+     * Generated recurring tasks for this business.
+     *
+     * @return HasMany<BusinessTask, $this>
+     */
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(BusinessTask::class);
+    }
+
+    /**
      * The name the business currently goes by.
      */
     public function displayName(): string

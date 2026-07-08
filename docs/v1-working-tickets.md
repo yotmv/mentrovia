@@ -34,6 +34,22 @@ Make the repo's standard verification commands usable again and document the loc
 - `composer test`
 - `npm run build`
 
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Fixed Pint `single_blank_line_at_eof` failures in 9 test files (auth, settings, unit example).
+- Confirmed `composer test` reaches PHPStan and Pest.
+- Resolved local Node/Vite build path issue; `npm run build` passes.
+- Added Pest browser smoke test covering guest redirects, authenticated page loads, and roadmap/intake flow.
+- `php artisan route:list --except-vendor` shows expected app routes.
+- No product behavior changes.
+
+Verification:
+
+- `composer test` passed.
+- `npm run build` passed.
+
 ## Ticket 1 - Knowledge Article Product Pages
 
 Priority: P1
@@ -73,6 +89,26 @@ Expose the seeded Texas compliance knowledge in-product with source and freshnes
 - Authenticated article index renders categories.
 - Article detail renders source links and verified dates.
 - Unknown slug returns 404.
+
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added authenticated knowledge article routes and `ArticleController` with index and show methods.
+- Article index shows categories, jurisdictions, risk badges, and status badges with category/status filters.
+- Article detail renders markdown safely via CommonMark GFM converter with escaped HTML and unsafe links disabled.
+- Detail page shows title, jurisdiction, category, risk level, last verified date, next review date, source summary, source links, and standard advisory disclaimer.
+- High-risk articles show a prominent warning banner.
+- Missing/stale source metadata shows a visible fallback state.
+- Added Knowledge nav item in sidebar.
+- Added Tailwind Typography plugin for prose-styled markdown content.
+- Code-review pass completed; no issues found.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/Knowledge/ArticleTest.php` passed.
+- `php artisan test --compact tests/Feature/KnowledgeSeederTest.php` passed.
 
 ## Ticket 2 - Knowledge Admin CRUD
 
@@ -116,6 +152,25 @@ Add a lightweight admin workflow for maintaining cached compliance articles and 
 - Source create/update/delete.
 - Published high-risk article validation.
 
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added `is_admin` boolean column to users table with migration.
+- Added `IsAdmin` middleware and registered `admin` alias in `bootstrap/app.php`.
+- Added `KnowledgeArticlePolicy` enforcing admin-only authorization for all CRUD actions.
+- Added admin knowledge routes behind `auth`, `verified`, and `admin` middleware.
+- Created `ArticleIndex` Livewire component with search, status filter, pagination, and archive/mark-stale/request-revalidation actions.
+- Created `ArticleForm` Livewire component with all article fields and nested source CRUD (add/remove/update sources inline).
+- Published high-risk articles require at least one source (validated in `save()`).
+- Added admin Knowledge nav item in sidebar (conditional on `is_admin`).
+- Code-review pass completed; fixed authorization ordering bug (`authorize('create')` moved before `KnowledgeArticle::create()`).
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/Admin/Knowledge/ArticleAdminTest.php` passed: 16 tests covering admin access, non-admin forbidden, CRUD, source CRUD, and high-risk validation.
+
 ## Ticket 3 - Stale Knowledge UX
 
 Priority: P1
@@ -148,6 +203,26 @@ Represent article freshness consistently before the LLM validation pipeline is b
 - Freshness helper unit/feature coverage.
 - Detail page warning for stale high-risk article.
 - Missing-source warning.
+
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added `FreshnessStatus` enum with four deterministic states: fresh, review soon, stale, missing sources.
+- Added `freshnessStatus()` and `isStale()` helpers on `KnowledgeArticle` model.
+- Freshness logic: missing sources takes priority, then stale (past review date or null), then review soon (within 14 days), then fresh.
+- Added freshness badges to article index and detail pages.
+- Added stale content and missing sources warning banners on article detail page.
+- Replaced old "Due for review" badge with freshness status badge in Freshness sidebar.
+- Eager-loaded `sources` relation in `ArticleController::index` to prevent N+1 queries.
+- Dashboard/roadmap hooks skipped per ticket's "only if low-risk and simple" wording.
+- Code-review pass completed; no issues found.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/Knowledge/FreshnessTest.php` passed: 9 tests covering all 4 freshness states, index badge, stale + high-risk dual warning, missing sources warning, and fresh article negative assertions.
+- `php artisan test --compact tests/Feature/Knowledge/ArticleTest.php` passed: updated stale and missing-sources tests.
 
 ## Ticket 4 - Recurring Task Schema And Templates
 
@@ -188,6 +263,22 @@ Create the persistent foundation for weekly/monthly/quarterly/yearly recurring b
 - Seeder idempotence.
 - Applicability rule coverage.
 
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added `RecurringTaskTemplate`, `BusinessTask`, and `TaskCompletion` schemas/models/factories.
+- Added `TaskCategory`, `TaskFrequency`, and `TaskConfidence` enums.
+- Seeded 11 idempotent recurring task templates from weekly/monthly/quarterly/yearly recurring knowledge articles.
+- Templates support profile applicability rules for employees, sales tax exposure, contractors, stages, and legal structures.
+- Added source article links, confidence, due rules, and professional review flags.
+- Code-review pass completed; no issues found for the schema/template path.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/RecurringTaskTemplateTest.php` passed.
+
 ## Ticket 5 - Recurring Task Generator
 
 Priority: P1
@@ -219,6 +310,22 @@ Generate business-specific recurring tasks from the user's profile.
 - Employee/payroll task set.
 - Contractor task set.
 - Idempotent regeneration.
+
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added `RecurringTaskGenerator` service to generate/update applicable business tasks from active templates.
+- Wired generator into business intake save after stage classification.
+- Regeneration is idempotent by business/template and preserves task completion state/history.
+- Profile changes add newly applicable employee, contractor, and sales-tax tasks.
+- Code-review pass completed; no issues found for generator/intake integration.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/RecurringTaskGeneratorTest.php` passed.
+- `php artisan test --compact tests/Feature/Business/IntakeTest.php` passed.
 
 ## Ticket 6 - Recurring Task UI
 
@@ -254,6 +361,28 @@ Give users a task calendar/list with completion tracking.
 - Task list visibility scoped to user.
 - Complete/uncomplete.
 - Dashboard upcoming tasks.
+
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added authenticated task routes: `tasks.index` and `tasks.update`.
+- Added Tasks sidebar navigation.
+- Added task list UI with this week/month/quarter/year/all tabs.
+- Tasks show title, frequency, due date, category, source article link, why-it-matters copy, review badge, completion checkbox, and notes.
+- Added scoped task update authorization via `UpdateTaskRequest`.
+- Added complete/uncomplete behavior with notes and completion-history records.
+- Added dashboard upcoming tasks section.
+- Code-review pass completed; fixed boolean completion parsing to use Laravel request boolean handling.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/TaskUiTest.php tests/Feature/DashboardTest.php` passed.
+- `php artisan test --compact tests/Feature/RecurringTaskTemplateTest.php tests/Feature/RecurringTaskGeneratorTest.php tests/Feature/TaskUiTest.php tests/Feature/Business/IntakeTest.php tests/Feature/DashboardTest.php` passed: 27 tests, 120 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `php artisan route:list --except-vendor` shows the task routes.
+- Full `php artisan test --compact` passed: 222 tests, 877 assertions.
 
 ## Ticket 7 - Text AI Provider Roles
 
@@ -857,9 +986,5 @@ Document the runtime requirements needed for beta.
 - Tickets 19-21 should be near the end, after most user-facing modules exist.
 
 ## Status Notes
-  - Ticket 0 100% Completed
-  - Ticket 1 100% Completed
-  - Ticket 2 100% Completed
-  - Ticket 3 100% Completed
-    -- Dashboard/roadmap hooks skipped in Ticket 3.
 
+See individual ticket Completion Notes sections above.

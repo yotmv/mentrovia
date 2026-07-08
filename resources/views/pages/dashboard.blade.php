@@ -80,6 +80,30 @@
             </div>
 
             <div class="mt-10">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <flux:heading size="sm">{{ __('Upcoming tasks') }}</flux:heading>
+                    <flux:link :href="route('tasks.index')" wire:navigate class="text-sm">{{ __('Task list') }}</flux:link>
+                </div>
+
+                @if ($upcomingTasks->isEmpty())
+                    <flux:text size="sm" class="mt-4">{{ __('No open upcoming tasks. Your current generated list is clear.') }}</flux:text>
+                @else
+                    <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        @foreach ($upcomingTasks as $task)
+                            <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                                <div class="flex items-center justify-between gap-3">
+                                    <flux:badge size="sm">{{ $task->frequency->label() }}</flux:badge>
+                                    <flux:text size="sm">{{ $task->due_on?->format('M j') }}</flux:text>
+                                </div>
+                                <flux:text size="sm" variant="strong" class="mt-3">{{ $task->title }}</flux:text>
+                                <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">{{ $task->category->label() }}</flux:text>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+
+            <div class="mt-10">
                 <x-advisory-disclaimer />
             </div>
         @endif

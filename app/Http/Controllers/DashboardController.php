@@ -19,6 +19,12 @@ class DashboardController extends Controller
             'riskFlags' => $business === null ? [] : $health->riskFlags($business),
             'missingSetupItems' => $business === null ? [] : $health->missingSetupItems($business),
             'nextActions' => $business === null ? collect() : $roadmap->nextActions($business),
+            'upcomingTasks' => $business === null ? collect() : $business->tasks()
+                ->whereNull('completed_at')
+                ->whereDate('due_on', '>=', now()->toDateString())
+                ->orderBy('due_on')
+                ->limit(5)
+                ->get(),
         ]);
     }
 }

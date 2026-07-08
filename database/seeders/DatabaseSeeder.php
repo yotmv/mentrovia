@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(KnowledgeArticleSeeder::class);
+        $this->call(RecurringTaskTemplateSeeder::class);
 
         /* for local development only */
         User::firstOrCreate(

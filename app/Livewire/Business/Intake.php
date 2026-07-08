@@ -7,6 +7,7 @@ use App\Enums\LegalStructure;
 use App\Enums\LocationType;
 use App\Enums\YesNoUnsure;
 use App\Models\Business;
+use App\Services\RecurringTaskGenerator;
 use App\Services\StageClassifier;
 use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
@@ -135,12 +136,12 @@ class Intake extends Component
         }
     }
 
-    public function save(StageClassifier $classifier): void
+    public function save(StageClassifier $classifier, RecurringTaskGenerator $taskGenerator): void
     {
         $this->normalizeEmptyStrings();
         $this->validate($this->allIntakeRules(), $this->intakeMessages());
 
-        $business = DB::transaction(function () use ($classifier): Business {
+        $business = DB::transaction(function () use ($classifier, $taskGenerator): Business {
             $business = Business::updateOrCreate(
                 ['user_id' => Auth::id()],
                 [
@@ -175,6 +176,8 @@ class Intake extends Component
 
             $business->stage = $classifier->classify($business);
             $business->save();
+
+            $taskGenerator->generateFor($business);
 
             return $business;
         });

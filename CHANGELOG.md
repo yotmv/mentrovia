@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Recurring task foundation: template, generated task, and completion-history schemas with seeded weekly/monthly/quarterly/yearly task templates linked to knowledge articles.
+- Recurring task generator that creates and refreshes business-specific tasks from intake profile changes while preserving completion state and history.
+- Recurring task UI with timeframe tabs, completion notes, task-source links, scoped updates, and dashboard upcoming tasks.
 - Knowledge article admin CRUD: Livewire-based admin index with search/status filter, create/edit form with all article fields and nested source CRUD, archive, mark stale, and request revalidation actions.
 - Admin authorization: `is_admin` column on users, `IsAdmin` middleware, `KnowledgeArticlePolicy` for admin-only access.
 - Admin Knowledge nav item in sidebar (conditional on `is_admin`).

@@ -21,6 +21,9 @@
                     <flux:sidebar.item icon="map" :href="route('roadmap')" :current="request()->routeIs('roadmap')" wire:navigate>
                         {{ __('Roadmap') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="calendar-days" :href="route('tasks.index')" :current="request()->routeIs('tasks.*')" wire:navigate>
+                        {{ __('Tasks') }}
+                    </flux:sidebar.item>
                     <flux:sidebar.item icon="photo" :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>
                         {{ __('Projects') }}
                     </flux:sidebar.item>
