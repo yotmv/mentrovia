@@ -3,6 +3,7 @@
 use App\Enums\ArticleCategory;
 use App\Enums\ArticleStatus;
 use App\Enums\RiskLevel;
+use App\Enums\SourceType;
 use App\Models\KnowledgeArticle;
 use App\Models\User;
 use Database\Seeders\KnowledgeArticleSeeder;
@@ -103,7 +104,8 @@ test('article detail shows missing sources fallback', function () {
 
     $this->get(route('knowledge.articles.show', 'test-article-no-sources'))
         ->assertOk()
-        ->assertSee('No source links are available');
+        ->assertSee('No source links are available')
+        ->assertSee('Missing sources');
 });
 
 test('article detail shows stale warning when review date has passed', function () {
@@ -117,10 +119,15 @@ test('article detail shows stale warning when review date has passed', function 
         'last_verified_at' => now()->subYear(),
         'next_review_at' => now()->subMonth(),
     ]);
+    $article->sources()->create([
+        'source_name' => 'Test Source',
+        'source_url' => 'https://example.gov/test',
+        'source_type' => SourceType::StateAgency,
+    ]);
 
     $this->get(route('knowledge.articles.show', 'stale-test-article'))
         ->assertOk()
-        ->assertSee('Due for review');
+        ->assertSee('Stale content');
 });
 
 test('unknown slug returns 404', function () {

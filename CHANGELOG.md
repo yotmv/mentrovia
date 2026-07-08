@@ -10,6 +10,9 @@ All notable changes to this project will be documented in this file.
 - Admin authorization: `is_admin` column on users, `IsAdmin` middleware, `KnowledgeArticlePolicy` for admin-only access.
 - Admin Knowledge nav item in sidebar (conditional on `is_admin`).
 - Published high-risk articles require at least one source.
+- Freshness status helper on KnowledgeArticle model with four deterministic states: fresh, review soon, stale, missing sources.
+- Freshness badges on article index and detail pages.
+- Stale content and missing sources warning banners on article detail page.
 - Knowledge article product pages: authenticated index with category/status filters and detail view with safe markdown rendering, source links, freshness metadata, high-risk warnings, and missing-source fallback states.
 - Knowledge nav item in sidebar.
 - Browser smoke test covering guest redirects, authenticated page loads, and roadmap/intake flow.

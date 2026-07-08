@@ -41,6 +41,7 @@
                         <div class="flex flex-wrap items-center gap-2">
                             <flux:heading size="sm">{{ $article->title }}</flux:heading>
                             <div class="ms-auto flex items-center gap-2">
+                                <flux:badge size="sm" :color="$article->freshnessStatus()->color()">{{ $article->freshnessStatus()->label() }}</flux:badge>
                                 <flux:badge size="sm" :color="match ($article->risk_level) {
                                     \App\Enums\RiskLevel::High => 'red',
                                     \App\Enums\RiskLevel::Medium => 'amber',

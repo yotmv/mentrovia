@@ -18,6 +18,7 @@
         <div class="mt-3 flex flex-wrap items-center gap-2">
             <flux:badge size="sm" color="zinc">{{ $article->category->label() }}</flux:badge>
             <flux:badge size="sm" color="zinc">{{ $article->jurisdiction }}</flux:badge>
+            <flux:badge size="sm" :color="$article->freshnessStatus()->color()">{{ $article->freshnessStatus()->label() }}</flux:badge>
             <flux:badge size="sm" :color="match ($article->risk_level) {
                 \App\Enums\RiskLevel::High => 'red',
                 \App\Enums\RiskLevel::Medium => 'amber',
@@ -30,6 +31,24 @@
                 \App\Enums\ArticleStatus::Archived => 'zinc',
             }">{{ $article->status->label() }}</flux:badge>
         </div>
+
+        @if ($article->freshnessStatus() === \App\Enums\FreshnessStatus::MissingSources)
+            <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <flux:heading size="sm" class="text-red-700 dark:text-red-300">{{ __('Missing sources') }}</flux:heading>
+                <flux:text size="sm" class="mt-1 text-red-700 dark:text-red-300">
+                    {{ __('This article has no source links. Verify any guidance with the appropriate government agency before relying on it.') }}
+                </flux:text>
+            </div>
+        @endif
+
+        @if ($article->isStale())
+            <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <flux:heading size="sm" class="text-red-700 dark:text-red-300">{{ __('Stale content') }}</flux:heading>
+                <flux:text size="sm" class="mt-1 text-red-700 dark:text-red-300">
+                    {{ __('This article is past its scheduled review date. Confirm all guidance with the official source below before acting.') }}
+                </flux:text>
+            </div>
+        @endif
 
         @if ($article->risk_level === \App\Enums\RiskLevel::High)
             <div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
@@ -64,9 +83,7 @@
                             <dd>{{ $article->version }}</dd>
                         </div>
                     </dl>
-                    @if ($article->next_review_at && $article->next_review_at->isPast())
-                        <flux:badge size="sm" color="amber" class="mt-3">{{ __('Due for review') }}</flux:badge>
-                    @endif
+                    <flux:badge size="sm" :color="$article->freshnessStatus()->color()" class="mt-3">{{ $article->freshnessStatus()->label() }}</flux:badge>
                 </div>
 
                 <div class="rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">

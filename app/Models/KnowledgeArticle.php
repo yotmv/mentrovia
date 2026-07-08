@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ArticleCategory;
 use App\Enums\ArticleStatus;
+use App\Enums\FreshnessStatus;
 use App\Enums\RiskLevel;
 use Database\Factories\KnowledgeArticleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -61,5 +62,33 @@ class KnowledgeArticle extends Model
     public function sources(): HasMany
     {
         return $this->hasMany(KnowledgeSource::class);
+    }
+
+    public function freshnessStatus(): FreshnessStatus
+    {
+        if ($this->sources->isEmpty()) {
+            return FreshnessStatus::MissingSources;
+        }
+
+        if (! $this->next_review_at) {
+            return FreshnessStatus::Stale;
+        }
+
+        $daysUntilReview = now()->startOfDay()->diffInDays($this->next_review_at->startOfDay(), false);
+
+        if ($daysUntilReview < 0) {
+            return FreshnessStatus::Stale;
+        }
+
+        if ($daysUntilReview <= 14) {
+            return FreshnessStatus::ReviewSoon;
+        }
+
+        return FreshnessStatus::Fresh;
+    }
+
+    public function isStale(): bool
+    {
+        return $this->freshnessStatus() === FreshnessStatus::Stale;
     }
 }

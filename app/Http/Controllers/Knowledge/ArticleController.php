@@ -17,6 +17,7 @@ class ArticleController extends Controller
         $status = $request->query('status');
 
         $articles = KnowledgeArticle::query()
+            ->with('sources')
             ->when($category, fn ($query) => $query->where('category', $category))
             ->when($status, fn ($query) => $query->where('status', $status))
             ->orderBy('title')

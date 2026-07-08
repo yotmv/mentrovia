@@ -860,3 +860,6 @@ Document the runtime requirements needed for beta.
   - Ticket 0 100% Completed
   - Ticket 1 100% Completed
   - Ticket 2 100% Completed
+  - Ticket 3 100% Completed
+    -- Dashboard/roadmap hooks skipped in Ticket 3.
+
