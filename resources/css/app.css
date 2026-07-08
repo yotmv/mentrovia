@@ -26,7 +26,18 @@
     --color-accent: var(--color-neutral-800);
     --color-accent-content: var(--color-neutral-800);
     --color-accent-foreground: var(--color-white);
+
+    /* Brand colors */
+    --color-ink: #101828;
+    --color-muted: #667085;
+    --color-paper: #F9FAFB;
+    --color-cream: #FFF8EE;
+    --color-moss: #2F6B4F;
+    --color-sage: #DDEBDD;
+    --color-gold: #C99A3A;
+    --color-rust: #B85C38;
 }
+
 
 @layer theme {
     .dark {
