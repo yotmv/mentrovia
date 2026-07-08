@@ -855,3 +855,7 @@ Document the runtime requirements needed for beta.
 - Tickets 14 and 15 can run after Ticket 1 and do not need to wait for Advisor Q&A.
 - Tickets 16-18 should wait for Ticket 7.
 - Tickets 19-21 should be near the end, after most user-facing modules exist.
+
+## Status Notes
+  - Ticket 0 100% Completed
+  - Ticket 1 100% Completed

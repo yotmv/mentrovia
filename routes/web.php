@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Business\IntakeController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Knowledge\ArticleController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RoadmapController;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('roadmap', RoadmapController::class)->name('roadmap');
     Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    Route::get('knowledge/articles', [ArticleController::class, 'index'])->name('knowledge.articles.index');
+    Route::get('knowledge/articles/{slug}', [ArticleController::class, 'show'])->name('knowledge.articles.show');
 });
 
 require __DIR__.'/settings.php';

@@ -24,6 +24,9 @@
                     <flux:sidebar.item icon="photo" :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>
                         {{ __('Projects') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="book-open-text" :href="route('knowledge.articles.index')" :current="request()->routeIs('knowledge.*')" wire:navigate>
+                        {{ __('Knowledge') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             </flux:sidebar.nav>
 

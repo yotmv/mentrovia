@@ -67,7 +67,10 @@ A typical advisory response should pass through:
 
 ```txt
 README.md
+CHANGELOG.md
 docs/v1-beta-agent-plan.md
+docs/v1-working-plan.md
+docs/v1-working-tickets.md
 docs/product-roadmap.md
 docs/llm-validation-pipeline.md
 docs/texas-compliance-scope.md
@@ -78,6 +81,8 @@ LICENSE
 ## Project Documents
 
 - [V1 Beta Agent Plan](docs/v1-beta-agent-plan.md)
+- [V1 Working Plan](docs/v1-working-plan.md)
+- [V1 Working Tickets](docs/v1-working-tickets.md)
 - [Product Roadmap](docs/product-roadmap.md)
 - [LLM Validation Pipeline](docs/llm-validation-pipeline.md)
 - [Texas Compliance Scope](docs/texas-compliance-scope.md)
