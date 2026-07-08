@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Ai\Providers\OpenRouterProvider;
 use App\Ai\Providers\ReplicateProvider;
 use App\Ai\Providers\StabilityProvider;
+use App\Ai\Text\Contracts\TextRoleGenerator;
+use App\Ai\Text\TextRoleManager;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Date;
@@ -20,7 +22,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->scoped(TextRoleGenerator::class, TextRoleManager::class);
     }
 
     /**

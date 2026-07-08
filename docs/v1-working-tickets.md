@@ -423,6 +423,26 @@ Create a reusable text-generation provider role system before building validatio
 - Fallback behavior.
 - Fake provider response.
 
+### Completion Notes
+
+Completed 2026-07-08.
+
+- Added `TextGenerationRole` enum with classifier, validator factual, validator contradiction, validator user fit, final judge, advisor answer, brand copy, and ad copy roles.
+- Added config-driven text role profiles in `config/text-generation.php` with environment-driven provider/model/timeout settings and per-role fallback provider/model settings.
+- Added `TextRoleManager` service with role resolution, Laravel AI anonymous-agent prompting, provider/model fallback, and structured result metadata.
+- Added `TextRoleGenerator` contract under the text AI domain and bound it to `TextRoleManager`.
+- Added typed request/result/profile objects and role-specific configuration exceptions.
+- Added `TextRoleManager::fake()` and `FakeTextRoleGenerator` for role response fakes and assertions in tests.
+- Added human-voice guidance for brand/ad copy outputs using a local prompt asset "avoid-AI-writing" guidance.
+- Code-review pass completed; fixed contract placement to avoid introducing a new base `app/Contracts` folder.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/TextRoleManagerTest.php` passed: 5 tests, 15 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+
 ## Ticket 8 - Real Photo Studio E2E Hardening
 
 Priority: P0
