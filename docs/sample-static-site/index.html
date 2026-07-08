@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mentrovia — Open-source AI mentor for small business operators</title>
+  <meta name="description" content="Mentrovia is an open-source AI mentor for small business operators, starting with Texas-focused formation, compliance, taxes, banking, owner pay, branding, and recurring operating tasks." />
+  <meta property="og:title" content="Mentrovia" />
+  <meta property="og:description" content="An open-source AI mentor for small business operators." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mentrovia.dev" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: '#101828',
+            muted: '#667085',
+            paper: '#F9FAFB',
+            cream: '#FFF8EE',
+            moss: '#2F6B4F',
+            sage: '#DDEBDD',
+            gold: '#C99A3A',
+            rust: '#B85C38'
+          },
+          boxShadow: {
+            soft: '0 20px 60px rgba(16, 24, 40, 0.12)'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-cream text-ink antialiased">
+  <header class="sticky top-0 z-40 border-b border-black/5 bg-cream/90 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+      <a href="#" class="flex items-center gap-3" aria-label="Mentrovia home">
+        <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-moss text-lg font-black text-white">M</div>
+        <div>
+          <div class="text-lg font-black tracking-tight">Mentrovia</div>
+          <div class="hidden text-xs text-muted sm:block">Open-source AI business mentor</div>
+        </div>
+      </a>
+      <nav class="hidden items-center gap-8 text-sm font-medium text-muted md:flex">
+        <a class="hover:text-ink" href="#features">Features</a>
+        <a class="hover:text-ink" href="#scope">V1 Scope</a>
+        <a class="hover:text-ink" href="#validation">Validation</a>
+        <a class="hover:text-ink" href="#github">GitHub</a>
+      </nav>
+      <a href="https://github.com/yotmv/mentrovia" class="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-moss">View GitHub</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 -z-10">
+        <div class="absolute left-1/2 top-0 h-[520px] w-[920px] -translate-x-1/2 rounded-full bg-sage/70 blur-3xl"></div>
+        <div class="absolute right-0 top-28 h-80 w-80 rounded-full bg-gold/20 blur-3xl"></div>
+      </div>
+      <div class="mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 lg:grid-cols-2 lg:px-8 lg:py-28">
+        <div>
+          <div class="mb-6 inline-flex items-center gap-2 rounded-full border border-moss/20 bg-white/70 px-4 py-2 text-sm font-semibold text-moss shadow-sm">
+            <span class="h-2 w-2 rounded-full bg-moss"></span>
+            Texas-first v1 beta
+          </div>
+          <h1 class="max-w-4xl text-5xl font-black tracking-tight text-ink sm:text-6xl lg:text-7xl">
+            An open-source AI mentor for small business operators.
+          </h1>
+          <p class="mt-6 max-w-2xl text-lg leading-8 text-muted">
+            Mentrovia helps small business owners understand formation, taxes, compliance, banking, owner pay, branding, and recurring operating tasks — starting with Texas and built to expand state by state.
+          </p>
+          <div class="mt-10 flex flex-col gap-4 sm:flex-row">
+            <a href="https://github.com/yotmv/mentrovia" class="rounded-full bg-moss px-7 py-4 text-center text-sm font-bold text-white shadow-soft transition hover:bg-ink">Start on GitHub</a>
+            <a href="#scope" class="rounded-full border border-ink/10 bg-white px-7 py-4 text-center text-sm font-bold text-ink transition hover:border-moss hover:text-moss">View v1 scope</a>
+          </div>
+          <p class="mt-6 text-xs leading-6 text-muted">
+            Mentrovia is an educational and workflow-assistance project, not legal, tax, accounting, or financial advice.
+          </p>
+        </div>
+
+        <d class="rounded-[2rem] border border-black/5 bg-white p-4 shadow-soft">
+            <img src="hero.webp" alt="a small business owner standing at a desk with a laptop, surrounded by subtle floating cards labeled formation, sales tax, banking, owner pay, compliance, and brand kit."
+                class="object-cover relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-sage via-cream to-white" />
+          <!-- IMAGE PROMPT: Hero illustration
+          Create a polished editorial-style illustration for a software landing page called Mentrovia. Show a small business owner standing at a desk with a laptop, surrounded by subtle floating cards labeled formation, sales tax, banking, owner pay, compliance, and brand kit. Include a warm Texas-inspired landscape hint in the background, but keep it modern and not cliché. Style: premium SaaS editorial illustration, soft natural light, warm cream background, sage green and muted gold accents, clean composition, no readable small text except simple large card labels, 16:10 aspect ratio.
+          -->
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="bg-white py-20">
+      <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <div class="max-w-3xl">
+          <p class="text-sm font-black uppercase tracking-[0.2em] text-moss">What it helps with</p>
+          <h2 class="mt-4 text-4xl font-black tracking-tight sm:text-5xl">A practical mentor for the messy middle of running a business.</h2>
+          <p class="mt-5 text-lg leading-8 text-muted">Mentrovia combines structured business checklists with AI-assisted explanations and validation workflows so users can understand what to do next.</p>
+        </div>
+        <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <article class="rounded-3xl border border-black/5 bg-cream p-7">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-moss text-xl text-white">01</div>
+            <h3 class="text-xl font-black">Formation guidance</h3>
+            <p class="mt-3 leading-7 text-muted">Guide users through solo, DBA, LLC, corporation, and employee-stage considerations with Texas-first assumptions.</p>
+          </article>
+          <article class="rounded-3xl border border-black/5 bg-cream p-7">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-moss text-xl text-white">02</div>
+            <h3 class="text-xl font-black">Tax and compliance scope</h3>
+            <p class="mt-3 leading-7 text-muted">Organize sales tax, franchise tax, employer registration, city/county considerations, and annual obligations.</p>
+          </article>
+          <article class="rounded-3xl border border-black/5 bg-cream p-7">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-moss text-xl text-white">03</div>
+            <h3 class="text-xl font-black">Recurring task rhythm</h3>
+            <p class="mt-3 leading-7 text-muted">Weekly, monthly, quarterly, and yearly task plans keep owners oriented after setup is complete.</p>
+          </article>
+          <article class="rounded-3xl border border-black/5 bg-cream p-7">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-moss text-xl text-white">04</div>
+            <h3 class="text-xl font-black">Banking separation</h3>
+            <p class="mt-3 leading-7 text-muted">Encourage dedicated business banking, clean recordkeeping, merchant services, and practical setup readiness.</p>
+          </article>
+          <article class="rounded-3xl border border-black/5 bg-cream p-7">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-moss text-xl text-white">05</div>
+            <h3 class="text-xl font-black">Owner pay education</h3>
+            <p class="mt-3 leading-7 text-muted">Compare draws, salary, guaranteed payments, dividends, and retained earnings by entity type and use case.</p>
+          </article>
+          <article class="rounded-3xl border border-black/5 bg-cream p-7">
+            <div class="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-moss text-xl text-white">06</div>
+            <h3 class="text-xl font-black">Brand kit tools</h3>
+            <p class="mt-3 leading-7 text-muted">Generate name ideas, logo prompts, ad concepts, social copy, and basic brand positioning for new businesses.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="scope" class="py-20">
+      <div class="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+        <div>
+          <p class="text-sm font-black uppercase tracking-[0.2em] text-moss">V1 beta scope</p>
+          <h2 class="mt-4 text-4xl font-black tracking-tight sm:text-5xl">Start narrow. Build trust. Expand carefully.</h2>
+          <p class="mt-5 text-lg leading-8 text-muted">The first beta should focus on Texas, company intake, guided roadmaps, reusable advisory content, source-backed task lists, and a conservative AI validation pipeline.</p>
+        </div>
+        <div class="rounded-[2rem] bg-white p-6 shadow-soft">
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div class="rounded-2xl bg-paper p-5">
+              <div class="text-sm font-bold text-moss">Phase 1</div>
+              <h3 class="mt-2 text-xl font-black">Scratch start</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">Solo operator, no entity, no employees, needs business basics.</p>
+            </div>
+            <div class="rounded-2xl bg-paper p-5">
+              <div class="text-sm font-bold text-moss">Phase 2</div>
+              <h3 class="mt-2 text-xl font-black">Existing DBA</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">Already operating, may need entity, accounting, and tax cleanup.</p>
+            </div>
+            <div class="rounded-2xl bg-paper p-5">
+              <div class="text-sm font-bold text-moss">Phase 3</div>
+              <h3 class="mt-2 text-xl font-black">First employee</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">Payroll, registrations, policies, recurring HR obligations.</p>
+            </div>
+            <div class="rounded-2xl bg-paper p-5">
+              <div class="text-sm font-bold text-moss">Phase 4</div>
+              <h3 class="mt-2 text-xl font-black">Operating cadence</h3>
+              <p class="mt-2 text-sm leading-6 text-muted">Weekly/monthly/quarterly/yearly task plans and reminders.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="validation" class="bg-ink py-20 text-white">
+      <div class="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-2 lg:px-8">
+        <div>
+          <p class="text-sm font-black uppercase tracking-[0.2em] text-gold">AI validation</p>
+          <h2 class="mt-4 text-4xl font-black tracking-tight sm:text-5xl">Cached answers, checked before they guide.</h2>
+          <p class="mt-5 text-lg leading-8 text-white/70">Mentrovia should not rely on a single model for compliance-sensitive guidance. The roadmap uses cached advisory content, low-cost freshness checks, contradiction detection, and a stronger final arbiter model.</p>
+        </div>
+        <div class="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+            <img src="workflow-chart.webp" alt="stages left to right: cached answer, source check, three low-cost model reviewers, contradiction summary, senior arbiter model, approved answer, stale content queue." class="rounded-3xl bg-white p-5 text-ink">
+
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white py-20">
+      <div class="mx-auto max-w-7xl px-6 lg:px-8">
+        <div class="rounded-[2rem] bg-cream p-8 shadow-soft lg:p-12">
+          <div class="grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+            <div>
+              <p class="text-sm font-black uppercase tracking-[0.2em] text-moss">Laravel-first stack</p>
+              <h2 class="mt-4 text-4xl font-black tracking-tight">Built for a practical Laravel product workflow.</h2>
+              <p class="mt-5 text-lg leading-8 text-muted">The planned stack is Laravel, MySQL, Livewire, Tailwind, and Alpine, with OpenRouter-backed model routing for advisory generation and validation.</p>
+              <div class="mt-8 grid gap-3 sm:grid-cols-2">
+                <div class="rounded-2xl bg-white p-4 font-bold">Laravel application core</div>
+                <div class="rounded-2xl bg-white p-4 font-bold">Livewire guided intake</div>
+                <div class="rounded-2xl bg-white p-4 font-bold">MySQL advisory cache</div>
+                <div class="rounded-2xl bg-white p-4 font-bold">OpenRouter model routing</div>
+              </div>
+            </div>
+            <div>
+              <!-- IMAGE PROMPT: Product UI mockup
+              Create a realistic browser-based SaaS dashboard mockup for Mentrovia, an AI mentor for small business owners. The dashboard should show a company profile, a Texas compliance roadmap, upcoming weekly/monthly/quarterly/yearly tasks, and an AI mentor chat card. Style: clean Laravel/Tailwind-inspired interface, cream background, sage green accents, modern cards, high-end but simple, no brand logos other than Mentrovia, 4:3 aspect ratio.
+              -->
+              <img src="ui-mockup.webp" class="rounded-3xl border border-black/5 bg-white p-4 shadow-lg" alt="a realistic browser-based SaaS dashboard mockup for Mentrovia, an AI mentor for small business owners.">
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="github" class="py-20">
+      <div class="mx-auto max-w-4xl px-6 text-center lg:px-8">
+        <p class="text-sm font-black uppercase tracking-[0.2em] text-moss">Open source</p>
+        <h2 class="mt-4 text-4xl font-black tracking-tight sm:text-5xl">Built in public for small business operators.</h2>
+        <p class="mx-auto mt-5 max-w-2xl text-lg leading-8 text-muted">Mentrovia is intended to be transparent, auditable, and contributor-friendly. Advisory content should be source-backed, versioned, and validated before users depend on it.</p>
+        <div class="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
+          <a href="https://github.com/yotmv/mentrovia" class="rounded-full bg-ink px-8 py-4 text-sm font-bold text-white transition hover:bg-moss">Open GitHub repo</a>
+          <a href="https://mentrovia.dev" class="rounded-full border border-ink/10 bg-white px-8 py-4 text-sm font-bold text-ink transition hover:border-moss hover:text-moss">mentrovia.dev</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-black/5 bg-white py-10">
+    <div class="mx-auto flex max-w-7xl flex-col gap-4 px-6 text-sm text-muted md:flex-row md:items-center md:justify-between lg:px-8">
+      <div>© <span id="year"></span> Mentrovia. Open-source AI mentor for small business operators.</div>
+      <div class="flex gap-5">
+        <a class="hover:text-ink" href="https://github.com/yotmv/mentrovia">GitHub</a>
+        <a class="hover:text-ink" href="https://mentrovia.dev">mentrovia.dev</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
