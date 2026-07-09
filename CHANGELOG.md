@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Advisor Q&A MVP with authenticated navigation, profile-scoped question input, structured source-aware answers, validation for stale/missing-source/high-risk knowledge, professional-review flags, and persisted conversation history.
 - Validation admin review queue for stale articles, failed validations, conflicting sources, admin review decisions, validation votes, final judge results, review notes, and triage actions.
 - Text AI provider roles with config-driven provider/model selection, fallback generation, test fakes, and human-voice guidance for brand/ad copy.
 - Recurring task foundation: template, generated task, and completion-history schemas with seeded weekly/monthly/quarterly/yearly task templates linked to knowledge articles.

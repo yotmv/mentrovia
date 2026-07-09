@@ -14,6 +14,7 @@ Route::view('/', 'welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('business/intake', IntakeController::class)->name('business.intake');
+    Route::view('advisor', 'pages.advisor')->name('advisor');
     Route::get('roadmap', RoadmapController::class)->name('roadmap');
     Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
