@@ -8,14 +8,14 @@
         </div>
 
         <form method="GET" class="mb-6 flex flex-wrap items-center gap-3">
-            <select name="category" class="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+            <select name="category" class="rounded-xl px-3 py-2 text-sm ring-1 ring-ink/10 dark:ring-white/10 dark:bg-zinc-900">
                 <option value="">{{ __('All categories') }}</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category->value }}" {{ $selectedCategory === $category->value ? 'selected' : '' }}>{{ $category->label() }}</option>
                 @endforeach
             </select>
 
-            <select name="status" class="rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900">
+            <select name="status" class="rounded-xl px-3 py-2 text-sm ring-1 ring-ink/10 dark:ring-white/10 dark:bg-zinc-900">
                 <option value="">{{ __('All statuses') }}</option>
                 @foreach ($statuses as $status)
                     <option value="{{ $status->value }}" {{ $selectedStatus === $status->value ? 'selected' : '' }}>{{ $status->label() }}</option>
@@ -36,7 +36,7 @@
                     <a
                         href="{{ route('knowledge.articles.show', $article->slug) }}"
                         wire:navigate
-                        class="block rounded-lg border border-zinc-200 p-4 transition hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600"
+                        class="block rounded-2xl p-4 ring-1 ring-ink/10 transition hover:ring-ink/20 dark:ring-white/10 dark:hover:ring-white/20"
                     >
                         <div class="flex flex-wrap items-center gap-2">
                             <flux:heading size="sm">{{ $article->title }}</flux:heading>
@@ -55,7 +55,7 @@
                                 }">{{ $article->status->label() }}</flux:badge>
                             </div>
                         </div>
-                        <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                        <flux:text size="sm" class="mt-1 text-ink/60 dark:text-zinc-400">
                             {{ $article->category->label() }} · {{ $article->jurisdiction }}
                         </flux:text>
                         @if ($article->source_summary)

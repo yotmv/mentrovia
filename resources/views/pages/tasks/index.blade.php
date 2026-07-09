@@ -39,14 +39,14 @@
             </div>
 
             @if ($tasks->isEmpty())
-                <div class="rounded-lg border border-zinc-200 p-6 dark:border-zinc-700">
+                <div class="rounded-2xl p-6 ring-1 ring-ink/10 dark:ring-white/10">
                     <flux:heading size="sm">{{ __('No tasks in this view') }}</flux:heading>
                     <flux:text class="mt-2">{{ __('Try another timeframe or update your company profile to refresh applicable tasks.') }}</flux:text>
                 </div>
             @else
                 <div class="space-y-4">
                     @foreach ($tasks as $task)
-                        <article class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
+                        <article class="rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <div class="flex flex-wrap items-center gap-2">
@@ -65,7 +65,7 @@
                                     <flux:text size="sm" variant="strong">
                                         {{ $task->due_on?->format('M j, Y') ?? __('No due date') }}
                                     </flux:text>
-                                    <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                    <flux:text size="sm" class="mt-1 text-ink/60 dark:text-zinc-400">
                                         {{ $task->category->label() }}
                                     </flux:text>
                                 </div>

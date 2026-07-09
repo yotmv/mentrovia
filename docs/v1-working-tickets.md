@@ -1193,6 +1193,30 @@ Make the expanded V1 app navigable without turning the sidebar into clutter.
 - Route/link smoke tests.
 - Browser smoke once frontend build works.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Regrouped the sidebar from a single "Platform" list into three scannable groups in the final V1 order: Overview (Dashboard, Company Profile), Guidance (Roadmap, Tasks, Advisor, Knowledge), and Marketing (Projects, Branding, Advertising). The Admin group is unchanged.
+- Settings keeps its existing home in the user menu (desktop sidebar profile dropdown and mobile header dropdown) rather than becoming a tenth sidebar item; all ten final V1 nav labels from the ticket are present.
+- Owner Pay and Banking Setup intentionally stay out of the sidebar (they are not in the ticket's final label list) and remain reachable through roadmap, dashboard, and risk-flag cross-links.
+- Added `RiskFlag::actionUrl()` / `actionLabel()` so every dashboard risk flag links to the module that resolves it: banking-adjacent flags keep the banking checklist link, no-bookkeeping links to accounting knowledge, unclear structure links to the company profile, and operating-without-entity links to formation knowledge. Added an "Ask the Advisor" hint under the risk flag list.
+- Added roadmap cross-links into modules: name/brand/social items link to Branding, the 30-day marketing plan links to Advertising, the compliance rhythm links to Tasks, licenses/permits links to the Advisor, and legal structure, sales tax, franchise tax, bookkeeping, payroll, contractor, and professional support items link to category-filtered Knowledge views.
+- Dashboard next actions now render each roadmap item's module link under the title.
+- Mobile nav is unchanged structurally (`flux:sidebar collapsible="mobile"` plus the mobile header user menu); the new groups render inside the same collapsible sidebar.
+- UI work followed the `.agents/skills/design` guideline system (navigation, copywriting, interactivity, flexbox rules) using only the flux-free sidebar components already in place, so no `flux_ui_kit` gating was needed; the ui.sh picker from `.agents/skills/ideas` was not used because the regrouping follows the ticket's prescribed labels/order with no competing visual directions - a picker round can be run on request.
+- Code-review pass completed; aligned `RiskFlag::actionLabel()` string style with the enum's existing untranslated `label()`/`description()` convention.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/NavigationTest.php tests/Feature/DashboardTest.php tests/Feature/RoadmapTest.php tests/Feature/BankingSetupTest.php tests/Feature/BrowserSmokeTest.php` passed: 35 tests, 143 assertions.
+- Full `php artisan test --compact` passed: 332 tests, 1348 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `npm run build` passed (run inside WSL via an nvm-sourced script).
+- New `tests/Feature/NavigationTest.php` covers sidebar labels/order, per-link route resolution, page loads for every sidebar destination, admin-only nav visibility, and roadmap/dashboard cross-links.
+
 ## Ticket 20 - Beta UX Hardening
 
 Priority: P2

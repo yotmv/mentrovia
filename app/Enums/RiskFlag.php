@@ -37,4 +37,33 @@ enum RiskFlag: string
             self::OperatingWithoutEntityDecision => 'You are doing business before deciding on a legal structure. That may be fine, but review the trade-offs with an attorney or CPA.',
         };
     }
+
+    /**
+     * The in-app module page where the user can act on this flag.
+     */
+    public function actionUrl(): string
+    {
+        return match ($this) {
+            self::PersonalBankCommingling,
+            self::MissingEin,
+            self::SalesTaxPermitGap,
+            self::EmployeesWithoutPayroll => route('banking-setup'),
+            self::NoBookkeeping => route('knowledge.articles.index', ['category' => ArticleCategory::Accounting->value]),
+            self::UnclearLegalStructure => route('business.intake'),
+            self::OperatingWithoutEntityDecision => route('knowledge.articles.index', ['category' => ArticleCategory::Formation->value]),
+        };
+    }
+
+    public function actionLabel(): string
+    {
+        return match ($this) {
+            self::PersonalBankCommingling,
+            self::MissingEin,
+            self::SalesTaxPermitGap,
+            self::EmployeesWithoutPayroll => 'Open banking checklist',
+            self::NoBookkeeping => 'Read the bookkeeping guidance',
+            self::UnclearLegalStructure => 'Update your company profile',
+            self::OperatingWithoutEntityDecision => 'Compare legal structures',
+        };
+    }
 }

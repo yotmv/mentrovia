@@ -38,7 +38,7 @@ test('users with a business see their score, risk flags, and next actions', func
         ->assertSee('Bluebonnet Lawn Care')
         ->assertSee('Business setup score')
         ->assertSee('Risk flags')
-        ->assertSee('Next actions')
+        ->assertSee('The next work, in order.')
         ->assertSee('Personal and business funds may be mixed')
         ->assertSee('not legal, tax, payroll, or accounting advice');
 });

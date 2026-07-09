@@ -23,11 +23,11 @@
             </div>
         @endif
 
-        <div class="mb-8 rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
+        <div class="mb-8 rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                     <flux:heading size="sm">{{ __('Checklist progress') }}</flux:heading>
-                    <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                    <flux:text size="sm" class="mt-1 text-ink/60 dark:text-zinc-400">
                         {{ __('Mark setup steps as done after you complete them. The dedicated checking item also updates your profile risk flags.') }}
                     </flux:text>
                 </div>
@@ -42,12 +42,12 @@
                 <flux:heading size="lg">{{ __('Banking checklist') }}</flux:heading>
 
                 @foreach ($advice->checklist as $item)
-                    <article class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
+                    <article class="rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
                         <div class="flex flex-wrap items-start justify-between gap-4">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
                                     @if ($item->completed)
-                                        <flux:icon.check-circle variant="solid" class="size-5 shrink-0 text-green-600 dark:text-green-400" />
+                                        <flux:icon.check-circle variant="solid" class="size-5 shrink-0 text-moss dark:text-sage" />
                                     @endif
                                     <flux:heading size="sm">{{ $item->title }}</flux:heading>
                                     <flux:badge size="sm" :color="$item->completed ? 'green' : ($item->recommended ? 'blue' : 'amber')">
@@ -71,14 +71,14 @@
             </div>
 
             <aside class="space-y-6">
-                <div class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
+                <div class="rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
                     <flux:heading size="sm">{{ __('What to bring to the bank') }}</flux:heading>
                     <div class="mt-4 space-y-4">
                         @foreach ($advice->documents as $document)
                             <div>
                                 <div class="flex items-start gap-2">
                                     @if ($document->ready)
-                                        <flux:icon.check-circle variant="solid" class="mt-0.5 size-4 shrink-0 text-green-600 dark:text-green-400" />
+                                        <flux:icon.check-circle variant="solid" class="mt-0.5 size-4 shrink-0 text-moss dark:text-sage" />
                                     @else
                                         <flux:icon.exclamation-circle class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
                                     @endif
@@ -91,7 +91,7 @@
                                         @endif
                                     </div>
                                 </div>
-                                <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                <flux:text size="sm" class="mt-1 text-ink/60 dark:text-zinc-400">
                                     {{ $document->description }}
                                 </flux:text>
                             </div>
@@ -100,15 +100,15 @@
                 </div>
 
                 @if ($articles->isNotEmpty())
-                    <div class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
+                    <div class="rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
                         <flux:heading size="sm">{{ __('Related knowledge') }}</flux:heading>
-                        <flux:text size="sm" class="mt-2 text-zinc-500 dark:text-zinc-400">
+                        <flux:text size="sm" class="mt-2 text-ink/60 dark:text-zinc-400">
                             {{ __('Open the source articles for freshness and source details.') }}
                         </flux:text>
                         <ul role="list" class="mt-3 space-y-2">
                             @foreach ($articles as $article)
                                 <li class="flex items-start gap-2">
-                                    <flux:icon.book-open-text class="mt-0.5 size-4 shrink-0 text-zinc-400" />
+                                    <flux:icon.book-open-text class="mt-0.5 size-4 shrink-0 text-ink/40 dark:text-zinc-500" />
                                     <flux:link :href="route('knowledge.articles.show', $article->slug)" wire:navigate class="text-sm">
                                         {{ $article->title }}
                                     </flux:link>

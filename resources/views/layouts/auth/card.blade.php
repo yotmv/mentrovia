@@ -1,22 +1,22 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-neutral-100 antialiased dark:bg-linear-to-b dark:from-neutral-950 dark:to-neutral-900">
-        <div class="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+    <body class="min-h-dvh bg-cream font-sans text-ink antialiased dark:bg-zinc-950 dark:text-zinc-100">
+        <div class="flex min-h-dvh flex-col items-center justify-center gap-6 p-6 md:p-10">
             <div class="flex w-full max-w-md flex-col gap-6">
-                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate>
-                    <span class="flex h-9 w-9 items-center justify-center rounded-md">
-                        <x-app-logo-icon class="size-9 fill-current text-black dark:text-white" />
+                <a href="{{ route('home') }}" class="flex flex-col items-center gap-2 font-medium" wire:navigate aria-label="{{ __('Mentrovia homepage') }}">
+                    <span class="flex size-9 items-center justify-center rounded-xl bg-moss text-white dark:bg-sage dark:text-ink">
+                        <x-app-logo-icon class="size-5 fill-current" />
                     </span>
 
                     <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
                 </a>
 
                 <div class="flex flex-col gap-6">
-                    <div class="rounded-xl border bg-white dark:bg-stone-950 dark:border-stone-800 text-stone-800 shadow-xs">
-                        <div class="px-10 py-8">{{ $slot }}</div>
+                    <div class="rounded-2xl bg-white p-10 ring-1 ring-ink/10 text-ink shadow-sm dark:bg-zinc-900 dark:ring-white/10 dark:text-zinc-100">
+                        <div class="px-0 py-0">{{ $slot }}</div>
                     </div>
                 </div>
             </div>

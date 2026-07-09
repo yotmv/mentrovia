@@ -17,13 +17,13 @@
                             @foreach ($items as $item)
                                 <div
                                     @class([
-                                        'rounded-lg border border-zinc-200 p-4 dark:border-zinc-700',
+                                        'rounded-2xl p-4 ring-1 ring-ink/10 dark:ring-white/10',
                                         'opacity-60' => $item->status === \App\Enums\RoadmapStatus::NotApplicable,
                                     ])
                                 >
                                     <div class="flex flex-wrap items-center gap-2">
                                         @if ($item->status === \App\Enums\RoadmapStatus::Complete)
-                                            <flux:icon.check-circle variant="solid" class="size-5 text-green-600 dark:text-green-400" />
+                                            <flux:icon.check-circle variant="solid" class="size-5 text-moss dark:text-sage" />
                                         @endif
                                         <flux:heading size="sm">{{ $item->title }}</flux:heading>
                                         <div class="ms-auto flex items-center gap-2">
@@ -47,7 +47,7 @@
                                         </flux:link>
                                     @endif
                                     @if ($item->reviewer !== null)
-                                        <flux:text size="sm" class="mt-2 text-zinc-500 dark:text-zinc-400">
+                                        <flux:text size="sm" class="mt-2 text-ink/60 dark:text-zinc-400">
                                             {{ __('Review with: :reviewer', ['reviewer' => $item->reviewer]) }}
                                         </flux:text>
                                     @endif

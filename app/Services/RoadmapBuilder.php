@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ArticleCategory;
 use App\Enums\FilingConfidence;
 use App\Enums\LegalStructure;
 use App\Enums\RoadmapPhase;
@@ -77,6 +78,8 @@ class RoadmapBuilder
                 whyItMatters: __('Your name flows into every filing: DBA certificates, entity formation, bank accounts, and permits. Locking it in early avoids re-filing later.'),
                 priority: RoadmapPriority::Required,
                 status: $business->name !== null ? RoadmapStatus::Complete : RoadmapStatus::ToDo,
+                href: route('branding'),
+                hrefLabel: __('Generate name ideas in Branding'),
             ),
             new RoadmapItem(
                 key: 'decide-legal-structure',
@@ -90,6 +93,8 @@ class RoadmapBuilder
                     default => RoadmapStatus::ToDo,
                 },
                 reviewer: __('Attorney or CPA'),
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::Formation->value]),
+                hrefLabel: __('Compare legal structures'),
             ),
 
             // Legal setup
@@ -148,6 +153,8 @@ class RoadmapBuilder
                 whyItMatters: __('Texas has no general state business license, but many industries and local governments require their own permits. Confirm with your city and county.'),
                 priority: RoadmapPriority::Recommended,
                 status: RoadmapStatus::NeedsInfo,
+                href: route('advisor'),
+                hrefLabel: __('Ask the Advisor about local permits'),
             ),
 
             // Taxes
@@ -164,6 +171,8 @@ class RoadmapBuilder
                     default => RoadmapStatus::ToDo,
                 },
                 reviewer: __('CPA'),
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::SalesTax->value]),
+                hrefLabel: __('Read the sales tax guidance'),
             ),
             new RoadmapItem(
                 key: 'franchise-tax-awareness',
@@ -173,6 +182,8 @@ class RoadmapBuilder
                 priority: RoadmapPriority::Required,
                 status: $structure->isFormalEntity() ? RoadmapStatus::ToDo : RoadmapStatus::NotApplicable,
                 reviewer: __('CPA'),
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::FranchiseTax->value]),
+                hrefLabel: __('Read the franchise tax guidance'),
             ),
             new RoadmapItem(
                 key: 'federal-tax-planning',
@@ -214,6 +225,8 @@ class RoadmapBuilder
                 whyItMatters: __('Clean books power every tax filing, loan application, and pricing decision. Starting early is dramatically easier than cleaning up later.'),
                 priority: RoadmapPriority::Required,
                 status: $business->has_bookkeeping ? RoadmapStatus::Complete : RoadmapStatus::ToDo,
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::Accounting->value]),
+                hrefLabel: __('Read the bookkeeping guidance'),
             ),
             new RoadmapItem(
                 key: 'receipt-retention',
@@ -244,6 +257,8 @@ class RoadmapBuilder
                     $business->has_payroll => RoadmapStatus::Complete,
                     default => RoadmapStatus::ToDo,
                 },
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::Payroll->value]),
+                hrefLabel: __('Read the payroll guidance'),
             ),
             new RoadmapItem(
                 key: 'twc-registration',
@@ -278,6 +293,8 @@ class RoadmapBuilder
                 whyItMatters: __('You will need each contractor\'s W-9 to issue 1099-NEC forms in January. Collecting them before the first payment is far easier than chasing them at year end.'),
                 priority: RoadmapPriority::Recommended,
                 status: $business->uses_contractors ? RoadmapStatus::ToDo : RoadmapStatus::NotApplicable,
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::Contractors->value]),
+                hrefLabel: __('Read the contractor guidance'),
             ),
 
             // Owner pay
@@ -301,6 +318,8 @@ class RoadmapBuilder
                 whyItMatters: __('A consistent name, logo, and voice make a small business look established and keep marketing materials coherent.'),
                 priority: RoadmapPriority::Optional,
                 status: RoadmapStatus::ToDo,
+                href: route('branding'),
+                hrefLabel: __('Generate a brand kit'),
             ),
             new RoadmapItem(
                 key: 'online-presence',
@@ -309,6 +328,8 @@ class RoadmapBuilder
                 whyItMatters: __('A simple website or business profile plus matching social handles is how most local customers will verify you exist.'),
                 priority: RoadmapPriority::Optional,
                 status: RoadmapStatus::ToDo,
+                href: route('branding'),
+                hrefLabel: __('Grab social bios from your brand kit'),
             ),
 
             // Advertising
@@ -319,6 +340,8 @@ class RoadmapBuilder
                 whyItMatters: __('A short, concrete plan (who you serve, where they look, what you will post or run) beats sporadic ads and keeps early spend focused.'),
                 priority: RoadmapPriority::Optional,
                 status: RoadmapStatus::ToDo,
+                href: route('advertising'),
+                hrefLabel: __('Generate your 30-day marketing plan'),
             ),
 
             // Growth readiness
@@ -329,6 +352,8 @@ class RoadmapBuilder
                 whyItMatters: __('Most small business trouble comes from missed routine tasks, not big decisions. A recurring calendar keeps books, taxes, and filings on track.'),
                 priority: RoadmapPriority::Recommended,
                 status: RoadmapStatus::ToDo,
+                href: route('tasks.index'),
+                hrefLabel: __('Open your task list'),
             ),
             new RoadmapItem(
                 key: 'professional-support',
@@ -340,6 +365,8 @@ class RoadmapBuilder
                     ? RoadmapStatus::Complete
                     : RoadmapStatus::ToDo,
                 reviewer: __('CPA'),
+                href: route('knowledge.articles.index', ['category' => ArticleCategory::Professionals->value]),
+                hrefLabel: __('Read the guidance on professionals'),
             ),
         ];
     }

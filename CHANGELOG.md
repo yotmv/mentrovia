@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Roadmap cross-links into modules: business name and brand asset items link to Branding, the 30-day marketing plan item links to Advertising, the compliance rhythm item links to Tasks, the licenses/permits item links to the Advisor, and legal structure, sales tax, franchise tax, bookkeeping, payroll, contractor, and professional support items link to category-filtered Knowledge views.
+- Dashboard next actions now include each roadmap item's module link, and every dashboard risk flag links to the module that resolves it (banking checklist, bookkeeping guidance, company profile update, or legal structure comparison) with an "Ask the Advisor" hint under the flag list.
+- Navigation smoke tests covering sidebar labels/order, per-route link resolution, page loads for every sidebar destination, admin-only visibility, and roadmap/dashboard cross-links.
 - Advertising generator: versioned `advertising_kits` schema scoped to user/business, and an `AdvertisingKitGenerator` service that produces ad angles, Facebook/Instagram ad copy, Google ad concepts, social posts, flyer copy, ad image prompts, a landing page outline, and a first-30-days marketing plan through the `ad_copy` text role with human-voice guardrails; generations reuse the latest brand kit's names, tone, and palette when one exists and record which brand kit version grounded them.
 - Advertising UI: authenticated `/advertising` page with Advertising sidebar nav, generate/new-version actions, version switching, copy buttons for ads, posts, flyer copy, and image prompts, per-section empty fallbacks, and empty/loading/error states including a "generate a brand kit first" hint.
 - `flux_ui_kit` setting (`config/flux-ui.php`, `FLUX_UI_KIT` env): defaults to `flux-free` and auto-switches to `flux-pro` when a licensed `livewire/flux-pro` install is detected, so open-source installs without a Flux Pro license keep a fully working UI.
@@ -41,6 +44,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Sidebar navigation regrouped from a single "Platform" list into Overview (Dashboard, Company Profile), Guidance (Roadmap, Tasks, Advisor, Knowledge), and Marketing (Projects, Branding, Advertising) groups in the final V1 order; Settings stays in the user menu and the Admin group is unchanged.
 - Documented the Flux UI editions policy: `livewire/flux-pro` stays in `composer.json` during development, FOSS installs without a license remove it (`composer remove livewire/flux-pro`), and every Flux Pro component usage must ship a flux-free fallback gated by `flux_ui_kit` (README, contributing guide, V1 working plan and tickets).
 - Documented the real Photo Studio E2E review, runtime requirements, and credential blockers for ticket 8.
 

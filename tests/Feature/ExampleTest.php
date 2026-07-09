@@ -11,9 +11,9 @@ test('returns a successful response', function () {
 test('the landing page shows mentrovia branding and calls to action', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSee('Know exactly what your Texas business needs next.')
+        ->assertSee('A clearer path for the business you are building.')
         ->assertSee('Get started')
-        ->assertSee('not legal, tax, payroll, or accounting advice')
+        ->assertSee('not legal, tax, accounting, or financial advice')
         ->assertDontSee('Laravel has an incredibly rich ecosystem');
 });
 
@@ -22,5 +22,5 @@ test('authenticated visitors see a dashboard link on the landing page', function
 
     $this->get(route('home'))
         ->assertOk()
-        ->assertSee('Go to dashboard');
+        ->assertSee('Open dashboard');
 });

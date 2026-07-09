@@ -61,35 +61,35 @@
 
         <div class="mt-6 grid gap-6 lg:grid-cols-3">
             <div class="lg:col-span-2">
-                <div class="prose prose-zinc max-w-none dark:prose-invert">
+                <div class="prose prose-stone max-w-none dark:prose-invert">
                     {!! $converter->convert($article->body_markdown) !!}
                 </div>
             </div>
 
             <div class="space-y-6">
-                <div class="rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
+                <div class="rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
                     <flux:heading size="sm">{{ __('Freshness') }}</flux:heading>
                     <dl class="mt-3 space-y-2 text-sm">
                         <div>
-                            <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ __('Last verified') }}</dt>
+                            <dt class="font-medium text-ink/60 dark:text-zinc-400">{{ __('Last verified') }}</dt>
                             <dd>{{ $article->last_verified_at?->format('M j, Y') ?? __('Not yet verified') }}</dd>
                         </div>
                         <div>
-                            <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ __('Next review') }}</dt>
+                            <dt class="font-medium text-ink/60 dark:text-zinc-400">{{ __('Next review') }}</dt>
                             <dd>{{ $article->next_review_at?->format('M j, Y') ?? __('No review scheduled') }}</dd>
                         </div>
                         <div>
-                            <dt class="font-medium text-zinc-500 dark:text-zinc-400">{{ __('Version') }}</dt>
+                            <dt class="font-medium text-ink/60 dark:text-zinc-400">{{ __('Version') }}</dt>
                             <dd>{{ $article->version }}</dd>
                         </div>
                     </dl>
                     <flux:badge size="sm" :color="$article->freshnessStatus()->color()" class="mt-3">{{ $article->freshnessStatus()->label() }}</flux:badge>
                 </div>
 
-                <div class="rounded-xl border border-zinc-200 p-5 dark:border-zinc-700">
+                <div class="rounded-2xl p-5 ring-1 ring-ink/10 dark:ring-white/10">
                     <flux:heading size="sm">{{ __('Sources') }}</flux:heading>
                     @if ($article->sources->isEmpty())
-                        <flux:text size="sm" class="mt-3 text-zinc-500 dark:text-zinc-400">
+                        <flux:text size="sm" class="mt-3 text-ink/60 dark:text-zinc-400">
                             {{ __('No source links are available for this article. Verify any guidance with the appropriate government agency before relying on it.') }}
                         </flux:text>
                     @else
@@ -103,11 +103,11 @@
                                         href="{{ $source->source_url }}"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        class="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                                        class="text-sm text-moss hover:underline dark:text-sage"
                                     >
                                         {{ $source->source_name }}
                                     </a>
-                                    <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
+                                    <flux:text size="sm" class="text-ink/60 dark:text-zinc-400">
                                         {{ $source->source_type->label() }}@if ($source->retrieved_at) · {{ __('Retrieved') }} {{ $source->retrieved_at->format('M j, Y') }}@endif
                                     </flux:text>
                                 </li>

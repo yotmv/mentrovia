@@ -1,32 +1,41 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:sidebar sticky collapsible="mobile" class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
+    <body class="min-h-dvh bg-paper font-sans text-ink antialiased dark:bg-zinc-950 dark:text-zinc-100">
+        <flux:sidebar sticky collapsible="mobile" class="border-e border-ink/10 bg-cream dark:border-white/10 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
                 <flux:sidebar.collapse class="lg:hidden" />
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')" class="grid">
+                <flux:sidebar.group :heading="__('Overview')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
                         {{ __('Dashboard') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="building-storefront" :href="route('business.intake')" :current="request()->routeIs('business.*')" wire:navigate>
                         {{ __('Company Profile') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="sparkles" :href="route('advisor')" :current="request()->routeIs('advisor*')" wire:navigate>
-                        {{ __('Advisor') }}
-                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Guidance')" class="grid">
                     <flux:sidebar.item icon="map" :href="route('roadmap')" :current="request()->routeIs('roadmap')" wire:navigate>
                         {{ __('Roadmap') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="calendar-days" :href="route('tasks.index')" :current="request()->routeIs('tasks.*')" wire:navigate>
                         {{ __('Tasks') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="sparkles" :href="route('advisor')" :current="request()->routeIs('advisor*')" wire:navigate>
+                        {{ __('Advisor') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="book-open-text" :href="route('knowledge.articles.index')" :current="request()->routeIs('knowledge.*')" wire:navigate>
+                        {{ __('Knowledge') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Marketing')" class="grid">
                     <flux:sidebar.item icon="photo" :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>
                         {{ __('Projects') }}
                     </flux:sidebar.item>
@@ -35,9 +44,6 @@
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="megaphone" :href="route('advertising')" :current="request()->routeIs('advertising')" wire:navigate>
                         {{ __('Advertising') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="book-open-text" :href="route('knowledge.articles.index')" :current="request()->routeIs('knowledge.*')" wire:navigate>
-                        {{ __('Knowledge') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
@@ -59,7 +65,7 @@
         </flux:sidebar>
 
         <!-- Mobile User Menu -->
-        <flux:header class="lg:hidden">
+        <flux:header class="border-b border-ink/10 bg-cream dark:border-white/10 dark:bg-zinc-900 lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
             <flux:spacer />
