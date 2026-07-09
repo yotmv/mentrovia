@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Validation admin review queue for stale articles, failed validations, conflicting sources, admin review decisions, validation votes, final judge results, review notes, and triage actions.
 - Text AI provider roles with config-driven provider/model selection, fallback generation, test fakes, and human-voice guidance for brand/ad copy.
 - Recurring task foundation: template, generated task, and completion-history schemas with seeded weekly/monthly/quarterly/yearly task templates linked to knowledge articles.
 - Recurring task generator that creates and refreshes business-specific tasks from intake profile changes while preserving completion state and history.

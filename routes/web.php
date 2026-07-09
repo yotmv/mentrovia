@@ -24,6 +24,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::view('/knowledge/reviews', 'pages.admin.knowledge.reviews')->name('knowledge.reviews.index');
     Route::view('/knowledge/articles', 'pages.admin.knowledge.index')->name('knowledge.articles.index');
     Route::view('/knowledge/articles/create', 'pages.admin.knowledge.form')->name('knowledge.articles.create');
     Route::get('/knowledge/articles/{article}/edit', function (KnowledgeArticle $article) {

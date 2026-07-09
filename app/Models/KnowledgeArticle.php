@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -26,13 +27,17 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $next_review_at
  * @property ArticleStatus $status
  * @property int $version
+ * @property string|null $admin_review_notes
+ * @property Carbon|null $admin_reviewed_at
+ * @property Carbon|null $revalidation_requested_at
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
 #[Fillable([
     'title', 'slug', 'jurisdiction', 'category', 'body_markdown',
     'source_summary', 'risk_level', 'last_verified_at', 'next_review_at',
-    'status', 'version',
+    'status', 'version', 'admin_review_notes', 'admin_reviewed_at',
+    'revalidation_requested_at',
 ])]
 class KnowledgeArticle extends Model
 {
@@ -53,6 +58,8 @@ class KnowledgeArticle extends Model
             'last_verified_at' => 'datetime',
             'next_review_at' => 'datetime',
             'version' => 'integer',
+            'admin_reviewed_at' => 'datetime',
+            'revalidation_requested_at' => 'datetime',
         ];
     }
 
@@ -70,6 +77,14 @@ class KnowledgeArticle extends Model
     public function validationRuns(): HasMany
     {
         return $this->hasMany(ValidationRun::class);
+    }
+
+    /**
+     * @return HasOne<ValidationRun, $this>
+     */
+    public function latestValidationRun(): HasOne
+    {
+        return $this->hasOne(ValidationRun::class)->latestOfMany();
     }
 
     public function freshnessStatus(): FreshnessStatus

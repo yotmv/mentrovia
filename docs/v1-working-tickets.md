@@ -676,6 +676,31 @@ Expose validation results and admin review actions.
 - Revalidation request action.
 - Non-admin forbidden.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added authenticated admin validation review queue at `admin.knowledge.reviews.index`.
+- Queue includes stale articles, failed latest validation runs, conflicting-source latest runs, and admin-review-required latest runs.
+- Added admin sidebar entry for Review Queue alongside Knowledge Admin.
+- Review rows show article freshness/status, review reasons, validation votes, and final judge decision.
+- Added admin actions to approve current content, mark stale, request revalidation, archive, and save review notes.
+- Added durable `admin_review_notes`, `admin_reviewed_at`, and `revalidation_requested_at` article fields.
+- Approval updates article freshness/status without rewriting validation run audit decisions.
+- Existing Knowledge Admin mark-stale action now makes freshness visibly stale; revalidation now stores request timestamp.
+- Code-review pass completed; fixed validation audit-trail mutation before handoff.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact` passed.
+- `php artisan test --compact tests/Feature/Admin/Knowledge/ValidationReviewQueueTest.php` passed.
+- `php artisan test --compact tests/Feature/Admin/Knowledge/ArticleAdminTest.php` passed.
+- `php artisan test --compact tests/Feature/ComplianceValidationSchemaTest.php` passed.
+- `php artisan route:list --except-vendor --path=admin --no-interaction` showed the new review route.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+
 ## Ticket 12 - Advisor Q&A MVP
 
 Priority: P1
