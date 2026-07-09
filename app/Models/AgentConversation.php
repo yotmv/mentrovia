@@ -23,6 +23,11 @@ class AgentConversation extends Model
 
     protected $keyType = 'string';
 
+    public function getTable(): string
+    {
+        return config('ai.conversations.tables.conversations', parent::getTable());
+    }
+
     protected static function booted(): void
     {
         static::creating(function (AgentConversation $conversation): void {
