@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Owner pay module: authenticated `/owner-pay` guide comparing draws, distributions, guaranteed payments, W-2 salary, dividends, retained earnings, and accountable-plan reimbursements, tailored to the business's legal/tax structure with caveats, CPA questions, and related knowledge article links.
+- Undecided legal structure on the owner pay page prompts profile clarification and professional review with a neutral method overview.
+- Roadmap items can carry a link; the owner-pay roadmap item links to the owner pay guide.
 - Validation admin review queue for stale articles, failed validations, conflicting sources, admin review decisions, validation votes, final judge results, review notes, and triage actions.
 - Text AI provider roles with config-driven provider/model selection, fallback generation, test fakes, and human-voice guidance for brand/ad copy.
 - Recurring task foundation: template, generated task, and completion-history schemas with seeded weekly/monthly/quarterly/yearly task templates linked to knowledge articles.

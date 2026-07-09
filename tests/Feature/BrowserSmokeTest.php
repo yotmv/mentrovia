@@ -12,6 +12,7 @@ test('guests are redirected from every authenticated route', function () {
         'dashboard',
         'business.intake',
         'roadmap',
+        'owner-pay',
         'projects.index',
         'profile.edit',
         'appearance.edit',
@@ -45,4 +46,12 @@ test('roadmap loads for a user with a business profile', function () {
     $this->actingAs($user);
 
     $this->get(route('roadmap'))->assertOk();
+});
+
+test('owner pay loads for a user with a business profile', function () {
+    $user = User::factory()->create();
+    Business::factory()->operatingDba()->for($user)->create();
+    $this->actingAs($user);
+
+    $this->get(route('owner-pay'))->assertOk();
 });

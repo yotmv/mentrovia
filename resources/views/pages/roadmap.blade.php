@@ -41,6 +41,11 @@
                                         </div>
                                     </div>
                                     <flux:text size="sm" class="mt-2">{{ $item->whyItMatters }}</flux:text>
+                                    @if ($item->href !== null)
+                                        <flux:link :href="$item->href" wire:navigate class="mt-2 inline-block text-sm">
+                                            {{ $item->hrefLabel ?? __('Open the guide') }}
+                                        </flux:link>
+                                    @endif
                                     @if ($item->reviewer !== null)
                                         <flux:text size="sm" class="mt-2 text-zinc-500 dark:text-zinc-400">
                                             {{ __('Review with: :reviewer', ['reviewer' => $item->reviewer]) }}

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Business\IntakeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Knowledge\ArticleController;
+use App\Http\Controllers\OwnerPayController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RoadmapController;
 use App\Http\Controllers\TaskController;
@@ -15,6 +16,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('business/intake', IntakeController::class)->name('business.intake');
     Route::get('roadmap', RoadmapController::class)->name('roadmap');
+    Route::get('owner-pay', OwnerPayController::class)->name('owner-pay');
     Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
