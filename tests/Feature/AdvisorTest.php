@@ -8,7 +8,9 @@ use App\Enums\RiskLevel;
 use App\Enums\SourceType;
 use App\Enums\TextGenerationRole;
 use App\Enums\ValidationDecision;
+use App\Enums\YesNoUnsure;
 use App\Livewire\Advisor\Ask;
+use App\Livewire\Advisor\History;
 use App\Models\AgentConversation;
 use App\Models\AgentConversationMessage;
 use App\Models\Business;
@@ -16,7 +18,12 @@ use App\Models\KnowledgeArticle;
 use App\Models\KnowledgeSource;
 use App\Models\User;
 use App\Models\ValidationRun;
+use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
+
+beforeEach(function () {
+    RateLimiter::clear('advisor-answer:1');
+});
 
 test('guests are redirected from advisor', function () {
     $this->get(route('advisor'))
@@ -101,7 +108,10 @@ test('high-risk advisor answer runs validation and shows professional review lan
 
 test('stale advisor source runs validation and surfaces source refresh decision', function () {
     $user = User::factory()->create();
-    Business::factory()->for($user)->create();
+    Business::factory()->for($user)->create([
+        'sells_taxable_goods' => YesNoUnsure::Yes,
+        'sells_taxable_services' => YesNoUnsure::No,
+    ]);
     advisorArticle([
         'title' => 'Texas sales tax permit basics',
         'slug' => 'texas-sales-tax-permit-basics',
@@ -127,6 +137,121 @@ test('stale advisor source runs validation and surfaces source refresh decision'
         ->assertSee('Needs source refresh');
 
     expect(ValidationRun::firstOrFail()->aggregate_decision)->toBe(ValidationDecision::NeedsSourceRefresh);
+});
+
+test('advisor asks a follow up when profile facts are insufficient', function () {
+    $user = User::factory()->create();
+    Business::factory()->for($user)->create();
+    advisorArticle([
+        'title' => 'Texas sales tax permit basics',
+        'slug' => 'texas-sales-tax-permit-basics',
+        'category' => ArticleCategory::SalesTax,
+        'risk_level' => RiskLevel::Low,
+        'body_markdown' => advisorCompliantBody('Review official sales tax permit guidance before collecting taxable sales.'),
+    ]);
+
+    TextRoleManager::fake()->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    Livewire::test(Ask::class)
+        ->set('question', 'Do I need a Texas sales tax permit?')
+        ->call('ask')
+        ->assertSee('I do not have enough verified profile detail')
+        ->assertSee('Do you sell taxable goods, taxable services, or both?');
+
+    $answer = AgentConversationMessage::query()
+        ->where('role', 'assistant')
+        ->firstOrFail()
+        ->meta['answer'];
+
+    expect($answer['safety_status'])->toBe('needs_follow_up')
+        ->and(ValidationRun::count())->toBe(0);
+});
+
+test('advisor blocks unsupported deadline rate and threshold claims', function () {
+    $user = User::factory()->create();
+    Business::factory()->formalEntity()->for($user)->create();
+    advisorArticle([
+        'title' => 'Texas franchise tax basics',
+        'slug' => 'texas-franchise-tax-basics',
+        'category' => ArticleCategory::FranchiseTax,
+        'risk_level' => RiskLevel::Low,
+        'body_markdown' => advisorCompliantBody('Review official franchise tax guidance before filing.'),
+    ]);
+
+    TextRoleManager::fake([
+        TextGenerationRole::AdvisorAnswer->value => advisorAnswerJson('File by March 15 and expect a $50 fee.'),
+    ])->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    Livewire::test(Ask::class)
+        ->set('question', 'What franchise tax deadline applies to me?')
+        ->call('ask')
+        ->assertSee('I cannot safely provide that filing deadline')
+        ->assertDontSee('March 15');
+
+    $answer = AgentConversationMessage::query()
+        ->where('role', 'assistant')
+        ->firstOrFail()
+        ->meta['answer'];
+
+    expect($answer['safety_status'])->toBe('unsupported_claim_blocked')
+        ->and($answer['direct_answer'])->not->toContain('March 15');
+});
+
+test('advisor answers can be flagged by the owning user', function () {
+    $user = User::factory()->create();
+    Business::factory()->for($user)->create();
+    advisorArticle([
+        'title' => 'Bookkeeping setup basics',
+        'slug' => 'bookkeeping-setup-basics',
+        'category' => ArticleCategory::Accounting,
+        'risk_level' => RiskLevel::Low,
+        'body_markdown' => advisorCompliantBody('Use bookkeeping software and reconcile accounts monthly.'),
+    ]);
+
+    TextRoleManager::fake([
+        TextGenerationRole::AdvisorAnswer->value => advisorAnswerJson('Use bookkeeping software.'),
+    ])->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    $component = Livewire::test(Ask::class)
+        ->set('question', 'How should I start bookkeeping?')
+        ->call('ask');
+
+    $message = AgentConversationMessage::query()
+        ->where('role', 'assistant')
+        ->firstOrFail();
+
+    $component
+        ->call('reportAnswer', $message->id)
+        ->assertSee('Reported');
+
+    expect($message->refresh()->meta['feedback']['reported'])->toBeTrue()
+        ->and($message->meta['feedback']['reported_at'])->toBeString();
+});
+
+test('advisor quota blocks high cost answer generation', function () {
+    $user = User::factory()->create();
+    Business::factory()->for($user)->create();
+
+    for ($attempt = 0; $attempt < 6; $attempt++) {
+        RateLimiter::increment('advisor-answer:'.$user->id, decaySeconds: 3600);
+    }
+
+    TextRoleManager::fake()->preventStrayPrompts();
+
+    $this->actingAs($user);
+
+    Livewire::test(Ask::class)
+        ->set('question', 'Should I open a separate business bank account?')
+        ->call('ask')
+        ->assertHasErrors(['question']);
+
+    expect(AgentConversationMessage::count())->toBe(0);
 });
 
 test('advisor session history persists across questions', function () {
@@ -156,6 +281,55 @@ test('advisor session history persists across questions', function () {
 
     expect(AgentConversation::count())->toBe(1)
         ->and(AgentConversationMessage::query()->where('agent', 'advisor')->count())->toBe(4);
+});
+
+test('advisor history page shows only the authenticated users answers', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+
+    $conversation = AgentConversation::create([
+        'user_id' => $user->id,
+        'title' => 'Advisor Q&A',
+    ]);
+    $otherConversation = AgentConversation::create([
+        'user_id' => $otherUser->id,
+        'title' => 'Advisor Q&A',
+    ]);
+
+    AgentConversationMessage::create([
+        'conversation_id' => $conversation->id,
+        'user_id' => $user->id,
+        'agent' => 'advisor',
+        'role' => 'assistant',
+        'content' => 'Your saved advisor answer.',
+        'attachments' => [],
+        'tool_calls' => [],
+        'tool_results' => [],
+        'usage' => [],
+        'meta' => ['answer' => ['source_freshness' => []]],
+    ]);
+    AgentConversationMessage::create([
+        'conversation_id' => $otherConversation->id,
+        'user_id' => $otherUser->id,
+        'agent' => 'advisor',
+        'role' => 'assistant',
+        'content' => 'Another account advisor answer.',
+        'attachments' => [],
+        'tool_calls' => [],
+        'tool_results' => [],
+        'usage' => [],
+        'meta' => ['answer' => ['source_freshness' => []]],
+    ]);
+
+    $this->actingAs($user);
+
+    $this->get(route('advisor.history'))
+        ->assertOk()
+        ->assertSee('Advisor history');
+
+    Livewire::test(History::class)
+        ->assertSee('Your saved advisor answer.')
+        ->assertDontSee('Another account advisor answer.');
 });
 
 test('advisor message history is scoped to the authenticated user', function () {

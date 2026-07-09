@@ -797,6 +797,35 @@ Make Advisor Q&A safe enough for beta usage.
 - Feedback submission.
 - Rate limit/quota path.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added deterministic Advisor answer hardening for insufficient profile facts, unsupported filing deadline/rate/threshold/dollar/local claims, and validation escalation decisions.
+- Added necessary follow-up prompts for under-specified sales-tax, owner-pay/legal-structure, and local permit/license questions.
+- Added per-user Advisor quota guardrail of 6 questions per hour before high-cost answer generation.
+- Added user-facing answer flagging stored in assistant message metadata.
+- Polished Advisor source citations with freshness, risk, source count, and review dates.
+- Added authenticated Advisor history page at `/advisor/history`, scoped to the current user's assistant answers.
+- Added Advisor history link and active sidebar state for Advisor subpages.
+- Added feature coverage for insufficient facts, unsupported deadline/rate claims, feedback submission, quota blocking, and history scoping.
+- Code-review pass completed; no issues found.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/AdvisorTest.php` passed: 12 tests, 41 assertions.
+- `php artisan test --compact` passed: 268 tests, 1085 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `php artisan route:list --except-vendor --path=advisor --no-interaction` showed `advisor` and `advisor.history`.
+- `npm run build` > build
+> vite build
+
+vite v8.1.3 building client environment for production...
+✓ 3 modules transformed.
+Succesful.
+
 ## Ticket 14 - Owner Pay Module
 
 Priority: P2

@@ -18,7 +18,7 @@
                     <flux:sidebar.item icon="building-storefront" :href="route('business.intake')" :current="request()->routeIs('business.*')" wire:navigate>
                         {{ __('Company Profile') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="sparkles" :href="route('advisor')" :current="request()->routeIs('advisor')" wire:navigate>
+                    <flux:sidebar.item icon="sparkles" :href="route('advisor')" :current="request()->routeIs('advisor*')" wire:navigate>
                         {{ __('Advisor') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="map" :href="route('roadmap')" :current="request()->routeIs('roadmap')" wire:navigate>

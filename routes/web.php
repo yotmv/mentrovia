@@ -16,6 +16,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
     Route::get('business/intake', IntakeController::class)->name('business.intake');
     Route::view('advisor', 'pages.advisor')->name('advisor');
+    Route::view('advisor/history', 'pages.advisor-history')->name('advisor.history');
     Route::get('roadmap', RoadmapController::class)->name('roadmap');
     Route::get('owner-pay', OwnerPayController::class)->name('owner-pay');
     Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');

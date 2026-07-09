@@ -7,9 +7,14 @@
             </flux:text>
         </div>
 
-        <flux:button variant="ghost" size="sm" :href="route('business.intake')" wire:navigate icon="pencil-square">
-            {{ $this->business === null ? __('Create profile') : __('Edit profile') }}
-        </flux:button>
+        <div class="flex flex-wrap gap-2">
+            <flux:button variant="ghost" size="sm" :href="route('advisor.history')" wire:navigate icon="clock">
+                {{ __('History') }}
+            </flux:button>
+            <flux:button variant="ghost" size="sm" :href="route('business.intake')" wire:navigate icon="pencil-square">
+                {{ $this->business === null ? __('Create profile') : __('Edit profile') }}
+            </flux:button>
+        </div>
     </div>
 
     @if ($this->business === null)
@@ -36,9 +41,9 @@
                         rows="4"
                     />
 
-                    <div class="mt-4 flex items-center justify-between gap-4">
+                    <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
                         <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
-                            {{ __('Answers use cached sources and may trigger validation for stale or high-risk topics.') }}
+                            {{ __('Answers use cached sources and may trigger validation for stale or high-risk topics. :count questions left this hour.', ['count' => $this->remainingQuestions()]) }}
                         </flux:text>
                         <flux:button type="submit" variant="primary" icon="sparkles" wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="ask">{{ __('Ask Advisor') }}</span>
@@ -63,19 +68,30 @@
                         @foreach ($this->conversationMessages as $message)
                             @php
                                 $answer = $message->meta['answer'] ?? null;
+                                $feedback = $message->meta['feedback'] ?? null;
                             @endphp
 
                             <article
                                 class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700"
                                 wire:key="advisor-message-{{ $message->id }}"
                             >
-                                <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-                                    <flux:badge size="sm" :color="$message->role === 'assistant' ? 'blue' : 'zinc'">
-                                        {{ $message->role === 'assistant' ? __('Advisor') : __('You') }}
-                                    </flux:badge>
-                                    <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
-                                        {{ $message->created_at?->format('M j, g:i A') }}
-                                    </flux:text>
+                                <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <flux:badge size="sm" :color="$message->role === 'assistant' ? 'blue' : 'zinc'">
+                                            {{ $message->role === 'assistant' ? __('Advisor') : __('You') }}
+                                        </flux:badge>
+                                        @if (is_array($answer) && ($answer['safety_status'] ?? 'answered') !== 'answered')
+                                            <flux:badge size="sm" color="amber">{{ __('Guarded') }}</flux:badge>
+                                        @endif
+                                        @if (is_array($feedback) && ($feedback['reported'] ?? false))
+                                            <flux:badge size="sm" color="red">{{ __('Reported') }}</flux:badge>
+                                        @endif
+                                    </div>
+                                    <div class="text-end">
+                                        <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
+                                            {{ $message->created_at?->format('M j, g:i A') }}
+                                        </flux:text>
+                                    </div>
                                 </div>
 
                                 <flux:text class="text-pretty">{{ $message->content }}</flux:text>
@@ -91,6 +107,17 @@
                                                     </li>
                                                 @endforeach
                                             </ul>
+                                        </div>
+                                    @endif
+
+                                    @if (! empty($answer['follow_up_question']))
+                                        <div class="mt-5 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+                                            <flux:text size="sm" variant="strong" class="text-blue-800 dark:text-blue-200">
+                                                {{ __('Follow-up needed') }}
+                                            </flux:text>
+                                            <flux:text size="sm" class="mt-2 text-blue-800 dark:text-blue-200">
+                                                {{ $answer['follow_up_question'] }}
+                                            </flux:text>
                                         </div>
                                     @endif
 
@@ -118,15 +145,15 @@
                                         </div>
 
                                         <div>
-                                            <flux:text size="sm" variant="strong">{{ __('Source freshness') }}</flux:text>
+                                            <flux:text size="sm" variant="strong">{{ __('Sources') }}</flux:text>
                                             @if (empty($answer['source_freshness']))
                                                 <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
                                                     {{ __('No source matched.') }}
                                                 </flux:text>
                                             @else
-                                                <div class="mt-2 space-y-2">
+                                                <div class="mt-2 divide-y divide-zinc-950/5 dark:divide-white/10">
                                                     @foreach ($answer['source_freshness'] as $source)
-                                                        <div wire:key="advisor-source-{{ $message->id }}-{{ $source['article_id'] ?? $loop->index }}">
+                                                        <div class="py-2 first:pt-0 last:pb-0" wire:key="advisor-source-{{ $message->id }}-{{ $source['article_id'] ?? $loop->index }}">
                                                             <flux:link
                                                                 :href="route('knowledge.articles.show', $source['slug'])"
                                                                 wire:navigate
@@ -142,13 +169,41 @@
                                                                     'stale', 'missing_sources' => 'red',
                                                                     default => 'zinc',
                                                                 }">{{ $source['freshness_label'] }}</flux:badge>
+                                                                <flux:badge size="sm" color="zinc">
+                                                                    {{ trans_choice(':count source|:count sources', $source['source_count'] ?? 0) }}
+                                                                </flux:badge>
                                                             </div>
+                                                            <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                                                {{ __('Verified :verified. Review :review.', [
+                                                                    'verified' => $source['last_verified_at'] ?? __('unknown'),
+                                                                    'review' => $source['next_review_at'] ?? __('unknown'),
+                                                                ]) }}
+                                                            </flux:text>
                                                         </div>
                                                     @endforeach
                                                 </div>
                                             @endif
                                         </div>
                                     </div>
+
+                                    @if ($message->role === 'assistant')
+                                        <div class="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-950/5 pt-4 dark:border-white/10">
+                                            <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
+                                                {{ __('Something off? Flag it so it can be reviewed.') }}
+                                            </flux:text>
+                                            <flux:button
+                                                type="button"
+                                                size="sm"
+                                                variant="ghost"
+                                                icon="flag"
+                                                wire:click="reportAnswer('{{ $message->id }}')"
+                                                wire:loading.attr="disabled"
+                                                :disabled="is_array($feedback) && ($feedback['reported'] ?? false)"
+                                            >
+                                                {{ is_array($feedback) && ($feedback['reported'] ?? false) ? __('Flagged') : __('Flag answer') }}
+                                            </flux:button>
+                                        </div>
+                                    @endif
                                 @endif
                             </article>
                         @endforeach
