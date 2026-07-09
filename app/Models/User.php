@@ -82,6 +82,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Advisor Q&A conversations persisted through the Laravel AI SDK tables.
+     *
+     * @return HasMany<AgentConversation, $this>
+     */
+    public function advisorConversations(): HasMany
+    {
+        return $this->hasMany(AgentConversation::class);
+    }
+
+    /**
      * Projects shared with this user by other owners.
      *
      * @return BelongsToMany<Project, $this>

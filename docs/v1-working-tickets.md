@@ -744,6 +744,27 @@ Build the first Ask Advisor interface that answers from business profile + cache
 - Stale article path.
 - Session history persists.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added authenticated Advisor route/page and sidebar nav item.
+- Added Livewire Advisor Q&A UI with profile-required empty state, question input, structured answer display, checklist, caveats, confidence, source freshness, and professional-review flags.
+- Added `AdvisorAnswerService` that retrieves the authenticated user's business profile, relevant non-archived knowledge articles, source metadata, recent Advisor history, and runs the existing validation pipeline for stale, missing-source, or high-risk article context.
+- Persisted Advisor session and message history through the existing Laravel AI conversation tables via app models for `agent_conversations` and `agent_conversation_messages`.
+- Answers are scoped to the authenticated user's business context and message history is explicitly user-scoped.
+- Code-review pass completed; fixed public Livewire `conversationId` history scoping before handoff.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/AdvisorTest.php` passed: 7 tests, 22 assertions.
+- `php artisan test --compact` passed: 251 tests, 1018 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `php artisan route:list --except-vendor --path=advisor --no-interaction` showed the new Advisor route.
+- `npm run build` was attempted but blocked by the existing local Windows/WSL Node native-binding mismatch (`@rolldown/binding-win32-x64-msvc` missing from the current `node_modules` install); no dependency reinstall was performed.
+
 ## Ticket 13 - Advisor Q&A Hardening
 
 Priority: P2
