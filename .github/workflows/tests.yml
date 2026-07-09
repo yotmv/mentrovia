@@ -21,8 +21,10 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        php-version: ['8.3', '8.4', '8.5']
+        # composer.lock resolves to Symfony 8 / Laravel 13, which require PHP >= 8.4.1.
+        php-version: ['8.4', '8.5']
 
     steps:
       - name: Checkout code

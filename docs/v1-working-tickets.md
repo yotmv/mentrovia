@@ -836,6 +836,29 @@ Turn owner-pay article/roadmap content into a guided decision module.
 - C corp options.
 - Unknown structure warning.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added authenticated `owner-pay` route and single-action `OwnerPayController`.
+- Added `OwnerPayGuide` service with `OwnerPayAdvice`/`OwnerPayOption` value objects and `OwnerPayMethod`/`OwnerPayFit` enums; static v1 rules sourced from the seeded owner-pay knowledge articles (no AI generation, so the optional Advisor validation was not needed).
+- Guide compares owner draws, distributions, guaranteed payments, W-2 salary, dividends, retained earnings, and accountable-plan reimbursements, tailored by legal structure; LLCs branch on owner count (single-member as sole proprietor with an election question, multi-member as partnership).
+- Page shows methods that fit with caveat lists, dimmed "not options for your setup" with reasons, a "Questions for your CPA" section per structure, and related knowledge article links.
+- Undecided entity status (not started/unsure) shows a warning callout prompting profile clarification with an intake link and professional review, plus a neutral method overview.
+- Added optional `href`/`hrefLabel` to `RoadmapItem`; the owner-pay roadmap item now links to the guide.
+- Added owner-pay coverage to the browser smoke test and rebuilt Vite assets for the new page classes.
+- Code-review pass completed; added a direct profile-update link to the undecided-structure callout.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/OwnerPayTest.php` passed: 11 tests, 45 assertions.
+- Full `php artisan test --compact` passed: 249 tests, 1012 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --format agent` passed on changed files.
+- `php artisan route:list --except-vendor` shows the `owner-pay` route.
+- `npm run build` passed.
+
 ## Ticket 15 - Banking Setup Module
 
 Priority: P2

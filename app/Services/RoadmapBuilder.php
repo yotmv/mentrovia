@@ -285,6 +285,8 @@ class RoadmapBuilder
                 priority: RoadmapPriority::Recommended,
                 status: $structure->isUndecided() ? RoadmapStatus::NeedsInfo : RoadmapStatus::ToDo,
                 reviewer: __('CPA'),
+                href: route('owner-pay'),
+                hrefLabel: __('Compare your owner-pay options'),
             ),
 
             // Branding

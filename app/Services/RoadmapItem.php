@@ -19,6 +19,8 @@ final readonly class RoadmapItem
         public RoadmapPriority $priority,
         public RoadmapStatus $status,
         public ?string $reviewer = null,
+        public ?string $href = null,
+        public ?string $hrefLabel = null,
     ) {}
 
     public function isOpen(): bool
