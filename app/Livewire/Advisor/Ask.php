@@ -33,8 +33,10 @@ class Ask extends Component
 
     public function ask(AdvisorAnswerService $advisor): void
     {
+        $this->question = trim($this->question);
+
         $validated = $this->validate([
-            'question' => ['required', 'string', 'min:8', 'max:1000'],
+            'question' => ['required', 'string', 'regex:/\S/', 'min:8', 'max:1000'],
         ]);
 
         $user = Auth::user();
