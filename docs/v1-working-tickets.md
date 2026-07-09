@@ -619,6 +619,25 @@ Run multi-model validation for high-risk or stale compliance guidance.
 - Stale-source block path.
 - Guardrail catches unsupported threshold/deadline language.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added `ValidationPipeline` service that runs factual, contradiction, user-fit, and final judge text roles through the existing `TextRoleGenerator` contract.
+- Added structured model response parsing for JSON decisions, confidence, flags, concerns, raw response payloads, provider/model metadata, and parser-failure escalation.
+- Added deterministic guardrails for stale or missing sources, high-risk non-fresh content, missing disclaimer language, unsupported deadline/rate/threshold/dollar claims, and overly certain legal/tax/payroll/accounting wording.
+- Persisted validation runs, reviewer votes, final judge metadata, aggregate decision, confidence, flags, concerns, context snapshot, and normalized request payloads using the Ticket 9 schema.
+- Added conservative aggregation so the highest-risk guardrail or model decision wins; high-risk stale content cannot be approved current even when all model votes approve it.
+- Added failure handling that reports exceptions, stores failed runs as `admin_review_required`, and avoids persisting raw exception messages in audit JSON.
+- Code-review pass completed; hardened user/business association and failure audit payloads.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/ComplianceValidationPipelineTest.php tests/Feature/ComplianceValidationSchemaTest.php` passed: 10 tests, 72 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+
 ## Ticket 11 - Validation Admin Review Queue
 
 Priority: P1

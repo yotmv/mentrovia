@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file.
 - Freshness badges on article index and detail pages.
 - Stale content and missing sources warning banners on article detail page.
 - Compliance validation schema with validation run/vote models, enum casts, factories, and article/user/business query relationships.
+- Compliance validation pipeline with multi-role validator prompts, final judge aggregation, deterministic guardrails, stored votes, and conservative high-risk stale-content blocking.
 - Knowledge article product pages: authenticated index with category/status filters and detail view with safe markdown rendering, source links, freshness metadata, high-risk warnings, and missing-source fallback states.
 - Knowledge nav item in sidebar.
 - Browser smoke test covering guest redirects, authenticated page loads, and roadmap/intake flow.
