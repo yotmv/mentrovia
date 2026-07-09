@@ -64,15 +64,11 @@ class AdvisorAnswerService
             ]);
     }
 
-    /**
-     * @return Collection<int, KnowledgeArticle>
-     */
     public function relevantArticles(string $question): Collection
     {
         $tokens = $this->tokens($question);
 
-        $articles = KnowledgeArticle::query()
-            ->with('sources')
+        $ranked = KnowledgeArticle::query()
             ->where('status', '!=', ArticleStatus::Archived->value)
             ->get()
             ->map(fn (KnowledgeArticle $article): array => [
@@ -82,10 +78,20 @@ class AdvisorAnswerService
             ->filter(fn (array $scored): bool => $scored['score'] > 0)
             ->sortByDesc('score')
             ->take(3)
-            ->pluck('article')
             ->values();
 
-        return $articles;
+        $ids = $ranked->pluck('article.id')->values();
+
+        return KnowledgeArticle::query()
+            ->with('sources')
+            ->whereKey($ids)
+            ->get()
+            ->sortBy(function (KnowledgeArticle $article) use ($ids): int {
+                $index = $ids->search($article->getKey());
+
+                return $index === false ? PHP_INT_MAX : $index;
+            })
+            ->values();
     }
 
     /**
