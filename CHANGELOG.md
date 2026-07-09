@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 - Advisor Q&A hardening: guarded refusals for unsupported deadline/rate/threshold/local claims, necessary follow-up prompts, per-user quota, answer flagging, polished source citations, and `/advisor/history`.
 - Advisor Q&A MVP with authenticated navigation, profile-scoped question input, structured source-aware answers, validation for stale/missing-source/high-risk knowledge, professional-review flags, and persisted conversation history.
+- Banking setup module: authenticated `/banking-setup` checklist with profile-aware bank documents, tax/sales-tax/payroll reserve guidance, completion tracking, and dashboard/roadmap links.
 - Owner pay module: authenticated `/owner-pay` guide comparing draws, distributions, guaranteed payments, W-2 salary, dividends, retained earnings, and accountable-plan reimbursements, tailored to the business's legal/tax structure with caveats, CPA questions, and related knowledge article links.
 - Undecided legal structure on the owner pay page prompts profile clarification and professional review with a neutral method overview.
 - Roadmap items can carry a link; the owner-pay roadmap item links to the owner pay guide.

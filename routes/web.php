@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BankingSetupController;
 use App\Http\Controllers\Business\IntakeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Knowledge\ArticleController;
@@ -18,6 +19,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::view('advisor', 'pages.advisor')->name('advisor');
     Route::view('advisor/history', 'pages.advisor-history')->name('advisor.history');
     Route::get('roadmap', RoadmapController::class)->name('roadmap');
+    Route::get('banking-setup', BankingSetupController::class)->name('banking-setup');
+    Route::patch('banking-setup/items/{key}', [BankingSetupController::class, 'update'])->name('banking-setup.items.update');
     Route::get('owner-pay', OwnerPayController::class)->name('owner-pay');
     Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');

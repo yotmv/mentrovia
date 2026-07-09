@@ -192,6 +192,8 @@ class RoadmapBuilder
                 whyItMatters: __('Mixing personal and business money undermines bookkeeping, taxes, and the liability separation an entity is supposed to provide.'),
                 priority: RoadmapPriority::Required,
                 status: $business->has_business_bank ? RoadmapStatus::Complete : RoadmapStatus::ToDo,
+                href: route('banking-setup'),
+                hrefLabel: __('Open the banking checklist'),
             ),
             new RoadmapItem(
                 key: 'tax-reserve-account',
@@ -200,6 +202,8 @@ class RoadmapBuilder
                 whyItMatters: __('Moving a slice of every deposit into a reserve account means sales tax and estimated taxes are already funded when they come due.'),
                 priority: RoadmapPriority::Recommended,
                 status: RoadmapStatus::ToDo,
+                href: route('banking-setup'),
+                hrefLabel: __('Plan reserve accounts'),
             ),
 
             // Accounting

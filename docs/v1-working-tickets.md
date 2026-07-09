@@ -924,6 +924,30 @@ Turn banking article/risk-flag content into a practical setup checklist.
 - Sales-tax reserve visibility.
 - Payroll reserve visibility.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added authenticated `banking-setup` route and `BankingSetupController` with a profile-scoped PATCH endpoint for checklist completion.
+- Added `BankingSetupGuide` with `BankingSetupAdvice`, `BankingChecklistItem`, and `BankingDocumentItem` value objects.
+- Banking checklist covers dedicated checking, tax reserve, separate business card, merchant services, and conditionally shows sales-tax and payroll reserve items based on profile answers.
+- Dedicated checking completion updates `businesses.has_business_bank`; non-core banking checklist completion is stored in `business_profiles` under `banking_setup.*` keys.
+- Bank-visit document guidance adapts to EIN, DBA/assumed-name, LLC/partnership/formal-entity, sales-tax, and payroll profile state.
+- Dashboard risk flags for banking-adjacent issues link to the banking checklist; banking roadmap items now link to the banking setup page.
+- Added related knowledge article links and the standard advisory disclaimer.
+- Code-review pass completed; no unresolved issues found.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/BankingSetupTest.php` passed: 10 tests, 39 assertions.
+- `php artisan test --compact tests/Feature/BankingSetupTest.php tests/Feature/DashboardTest.php tests/Feature/RoadmapTest.php tests/Feature/OwnerPayTest.php` passed: 32 tests, 111 assertions.
+- Full `php artisan test --compact` passed: 278 tests, 1124 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `php artisan route:list --except-vendor --path=banking-setup --no-interaction` shows the GET and PATCH banking setup routes.
+- `npm run build` could not run in this WSL session because only Windows Node/npm are on PATH; Windows npm rejects the UNC working directory, and Windows Node cannot load the Linux-installed Rolldown optional binding from `node_modules`.
+
 ## Ticket 16 - Brand Kit Data Model And Generator
 
 Priority: P2

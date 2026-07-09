@@ -55,6 +55,16 @@
                                 <div>
                                     <flux:badge size="sm" color="red">{{ $flag->label() }}</flux:badge>
                                     <flux:text size="sm" class="mt-1">{{ $flag->description() }}</flux:text>
+                                    @if (in_array($flag, [
+                                        \App\Enums\RiskFlag::PersonalBankCommingling,
+                                        \App\Enums\RiskFlag::MissingEin,
+                                        \App\Enums\RiskFlag::SalesTaxPermitGap,
+                                        \App\Enums\RiskFlag::EmployeesWithoutPayroll,
+                                    ], true))
+                                        <flux:link :href="route('banking-setup')" wire:navigate class="mt-1 inline-block text-sm">
+                                            {{ __('Open banking checklist') }}
+                                        </flux:link>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>
