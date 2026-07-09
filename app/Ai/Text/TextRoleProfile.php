@@ -8,7 +8,7 @@ use App\Enums\TextGenerationRole;
 class TextRoleProfile
 {
     /**
-     * @param  array<int, array{provider: string, model: string, timeout: int}>  $candidates
+     * @param  array<int, array{provider: string, model: string, timeout: int, providerOptions: array<string, mixed>}>  $candidates
      */
     public function __construct(
         public readonly TextGenerationRole $role,
@@ -43,6 +43,7 @@ class TextRoleProfile
                 'provider' => $config['provider'] ?? null,
                 'model' => $config['model'] ?? null,
                 'timeout' => $config['timeout'] ?? null,
+                'provider_options' => $config['provider_options'] ?? [],
             ],
             ...$fallbacks,
         ])
@@ -63,10 +64,17 @@ class TextRoleProfile
                     throw TextGenerationRoleException::unknownProvider($role, $provider);
                 }
 
+                $providerOptions = $candidate['provider_options'] ?? [];
+
+                if (! is_array($providerOptions)) {
+                    throw TextGenerationRoleException::missingRoleConfig($role, 'provider_options');
+                }
+
                 return [
                     'provider' => $provider,
                     'model' => $model,
                     'timeout' => (int) ($candidate['timeout'] ?? config('text-generation.default_timeout', 60)),
+                    'providerOptions' => $providerOptions,
                 ];
             })
             ->values()

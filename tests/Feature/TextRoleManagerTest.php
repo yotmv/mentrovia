@@ -3,9 +3,11 @@
 use App\Ai\Text\Contracts\TextRoleGenerator;
 use App\Ai\Text\Exceptions\TextGenerationRoleException;
 use App\Ai\Text\TextGenerationRequest;
+use App\Ai\Text\TextRoleAgent;
 use App\Ai\Text\TextRoleManager;
 use App\Enums\TextGenerationRole;
-use Laravel\Ai\AnonymousAgent;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     config([
@@ -15,6 +17,11 @@ beforeEach(function () {
         'text-generation.roles.classifier.provider' => 'openrouter',
         'text-generation.roles.classifier.model' => 'openrouter/auto',
         'text-generation.roles.classifier.timeout' => 12,
+        'text-generation.roles.classifier.provider_options' => [
+            'provider' => [
+                'max_price' => ['prompt' => 1.0, 'completion' => 2.0],
+            ],
+        ],
         'text-generation.roles.classifier.fallbacks' => [
             ['provider' => 'groq', 'model' => 'llama-test', 'timeout' => 7],
         ],
@@ -27,8 +34,18 @@ test('text roles resolve provider model and fallback config', function () {
     expect($profile->role)->toBe(TextGenerationRole::Classifier)
         ->and($profile->configVersion)->toBe('test-v1')
         ->and($profile->candidates)->toBe([
-            ['provider' => 'openrouter', 'model' => 'openrouter/auto', 'timeout' => 12],
-            ['provider' => 'groq', 'model' => 'llama-test', 'timeout' => 7],
+            [
+                'provider' => 'openrouter',
+                'model' => 'openrouter/auto',
+                'timeout' => 12,
+                'providerOptions' => ['provider' => ['max_price' => ['prompt' => 1.0, 'completion' => 2.0]]],
+            ],
+            [
+                'provider' => 'groq',
+                'model' => 'llama-test',
+                'timeout' => 7,
+                'providerOptions' => [],
+            ],
         ]);
 });
 
@@ -39,7 +56,7 @@ test('missing role config fails before prompting', function () {
 })->throws(TextGenerationRoleException::class, 'model');
 
 test('role generation falls back to the next configured provider', function () {
-    AnonymousAgent::fake(function (string $prompt, $attachments, $provider, string $model) {
+    TextRoleAgent::fake(function (string $prompt, $attachments, $provider, string $model) {
         if ($provider->name() === 'openrouter') {
             throw new RuntimeException('primary down');
         }
@@ -58,7 +75,7 @@ test('role generation falls back to the next configured provider', function () {
         ->and($result->model)->toBe('llama-test')
         ->and($result->configVersion)->toBe('test-v1');
 
-    AnonymousAgent::assertPrompted(fn ($prompt): bool => str_contains($prompt->prompt, '"industry": "countertops"'));
+    TextRoleAgent::assertPrompted(fn ($prompt): bool => str_contains($prompt->prompt, '"industry": "countertops"'));
 });
 
 test('role responses can be faked through the app contract', function () {
@@ -79,13 +96,37 @@ test('role responses can be faked through the app contract', function () {
 });
 
 test('marketing roles include the human voice guidance', function () {
-    AnonymousAgent::fake(['human copy']);
+    TextRoleAgent::fake(['human copy']);
 
     app(TextRoleManager::class)->generate(TextGenerationRequest::make(
         TextGenerationRole::BrandCopy,
         'Write a homepage tagline.',
     ));
 
-    AnonymousAgent::assertPrompted(fn ($prompt): bool => str_contains($prompt->agent->instructions(), 'Human voice guidance')
+    TextRoleAgent::assertPrompted(fn ($prompt): bool => str_contains($prompt->agent->instructions(), 'Human voice guidance')
         && str_contains($prompt->agent->instructions(), 'Avoid inflated AI-style words'));
+});
+
+test('openrouter auto candidates send their configured price caps', function () {
+    Http::fake([
+        'openrouter.ai/api/v1/chat/completions' => Http::response([
+            'choices' => [[
+                'message' => ['content' => 'classified'],
+                'finish_reason' => 'stop',
+            ]],
+            'usage' => ['prompt_tokens' => 1, 'completion_tokens' => 1],
+        ]),
+    ]);
+
+    $result = app(TextRoleManager::class)->generate(TextGenerationRequest::make(
+        TextGenerationRole::Classifier,
+        'Classify this company.',
+    ));
+
+    expect($result->text)->toBe('classified');
+
+    Http::assertSent(fn (Request $request): bool => $request->data()['model'] === 'openrouter/auto'
+        && $request->data()['provider'] === [
+            'max_price' => ['prompt' => 1.0, 'completion' => 2.0],
+        ]);
 });

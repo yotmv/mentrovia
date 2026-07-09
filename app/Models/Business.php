@@ -145,6 +145,16 @@ class Business extends Model
     }
 
     /**
+     * Generated advertising kit versions for this business.
+     *
+     * @return HasMany<AdvertisingKit, $this>
+     */
+    public function advertisingKits(): HasMany
+    {
+        return $this->hasMany(AdvertisingKit::class);
+    }
+
+    /**
      * The name the business currently goes by.
      */
     public function displayName(): string

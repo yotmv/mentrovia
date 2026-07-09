@@ -1127,6 +1127,34 @@ Create ad copy and campaign prompt generation using business profile and brand k
 - Brand kit context included when present.
 - Persistence and user scoping.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added versioned `advertising_kits` schema/model/factory scoped to user and business, with a unique business/version constraint, `advertisingKits()` relationships on `User` and `Business`, and a nullable `brand_kit_id` reference (kept with a nulled reference if the brand kit is later deleted).
+- Added `AdvertisingKitGenerator` service that generates structured output through the existing `ad_copy` text role: ad angles, Facebook/Instagram ad copy (headline/body/cta), Google ad concepts (headline/description), organic social posts, flyer copy (headline/subheadline/bullets/call to action), ad image prompt variants, a landing page outline, and a first-30-days week-by-week marketing plan.
+- The `ad_copy` role's human-voice / avoid-AI-writing guardrail applies automatically via `TextRoleManager`; the prompt forbids invented discounts, prices, credentials, or review counts.
+- Brand kit context is reused when available: the latest brand kit's preferences, name ideas, taglines, positioning, tone/voice, and palette are passed as generation context, the prompt directs consistency with them, and the kit records which brand kit version grounded it. Without a brand kit, generation still works with neutral naming.
+- Image prompts are surfaced with copy buttons and a "paste into an image generator or a Photo Studio project" hint - no tight Photo Studio coupling, per the ticket.
+- Model responses are sanitized into safe structured values; unstructured non-JSON responses and structured responses with no usable sections both throw `AdvertisingKitGenerationException` without persisting anything.
+- Regeneration is intentional versioning: each generate call persists a new version, keeps earlier versions, and a version switcher lets the user revisit them.
+- Added authenticated `advertising` route, `pages.advertising` view, Advertising sidebar nav item (megaphone icon), and `App\Livewire\Advertising\Index` Livewire component.
+- Empty/loading/error states: intake prompt when no profile, dashed empty state with AI-cost hint plus a "generate a brand kit first" link when none exists, wire:loading button/dim states, a danger callout when generation fails (nothing persisted), and per-section fallbacks when a section came back unusable.
+- UI work followed the `.agents/skills/design` guideline system (surfaces, dividers, dark mode, responsive text sizing, copywriting, list roles) on top of the app's existing Flux/zinc conventions using flux-free components only, so no `flux_ui_kit` gating was needed; the ui.sh picker from `.agents/skills/ideas` was not used because the page mirrors the established Branding page design system with no competing visual directions - a picker round can be run on request.
+- Code-review pass completed; added an all-sections-empty guard so a structured-but-unusable model response fails without burning a kit version.
+- Document-code pass completed; `CHANGELOG.md` updated.
+- Note: a pre-existing uncommitted local change to `config/text-generation.php` (default model `openrouter/auto` -> `deepseek/deepseek-v4-pro`) was found in the working tree and intentionally left as-is; it is not part of this ticket.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/AdvertisingGeneratorTest.php tests/Feature/AdvertisingUiTest.php` passed: 18 tests, 72 assertions covering fake-provider generation, brand-kit context inclusion and recording, persistence, user/business scoping, versioning, unstructured-response failure, empty-kit failure, malformed-section coercion, brand-kit deletion behavior, guest redirect, no-profile prompt, empty states with and without a brand kit, generate persistence, failure error state, new-version switching, empty-section fallbacks, and cross-user scoping.
+- Full `php artisan test --compact` passed: 321 tests, 1288 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `php artisan migrate --no-interaction` created `advertising_kits` on the dev MariaDB.
+- `php artisan route:list --except-vendor --path=advertising --no-interaction` shows the advertising route.
+- `npm run build` passed (run inside WSL via an nvm-sourced script).
+
 ## Ticket 19 - Navigation And Information Architecture Pass
 
 Priority: P2

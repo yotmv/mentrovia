@@ -85,6 +85,34 @@ test('brand kit generation parses markdown fenced json responses', function () {
         ->and($kit->raw_response)->toHaveKey('name_ideas');
 });
 
+test('brand kit generation extracts JSON after explanatory model text', function () {
+    TextRoleManager::fake([
+        TextGenerationRole::BrandCopy->value => "Here is the requested brand kit:\n```json\n".json_encode(fakeBrandKitPayload())."\n```\nUse these ideas as a starting point.",
+    ])->preventStrayPrompts();
+
+    $business = Business::factory()->create();
+
+    $kit = app(BrandKitGenerator::class)->generate($business->user, $business);
+
+    expect($kit->name_ideas)->toHaveCount(3)
+        ->and($kit->raw_response)->toHaveKey('color_palette');
+});
+
+test('brand kit generation rejects JSON arrays and leaves existing versions untouched', function () {
+    TextRoleManager::fake([
+        TextGenerationRole::BrandCopy->value => '```json\n[]\n```',
+    ])->preventStrayPrompts();
+
+    $business = Business::factory()->create();
+    BrandKit::factory()->forBusiness($business)->create(['version' => 1]);
+
+    expect(fn () => app(BrandKitGenerator::class)->generate($business->user, $business))
+        ->toThrow(BrandKitGenerationException::class);
+
+    expect($business->brandKits()->count())->toBe(1)
+        ->and($business->brandKits()->value('version'))->toBe(1);
+});
+
 test('brand kits are scoped to the owning user and business', function () {
     TextRoleManager::fake([
         TextGenerationRole::BrandCopy->value => json_encode(fakeBrandKitPayload()),

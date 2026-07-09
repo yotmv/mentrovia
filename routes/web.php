@@ -25,6 +25,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('tasks', [TaskController::class, 'index'])->name('tasks.index');
     Route::patch('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::view('branding', 'pages.branding')->name('branding');
+    Route::view('advertising', 'pages.advertising')->name('advertising');
     Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
     Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
     Route::get('knowledge/articles', [ArticleController::class, 'index'])->name('knowledge.articles.index');

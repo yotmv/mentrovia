@@ -102,6 +102,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Generated advertising kit versions owned by this user.
+     *
+     * @return HasMany<AdvertisingKit, $this>
+     */
+    public function advertisingKits(): HasMany
+    {
+        return $this->hasMany(AdvertisingKit::class);
+    }
+
+    /**
      * Projects shared with this user by other owners.
      *
      * @return BelongsToMany<Project, $this>

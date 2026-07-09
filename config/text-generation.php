@@ -3,12 +3,27 @@
 $defaultProvider = env('TEXT_GENERATION_PROVIDER', 'openrouter');
 $defaultModel = env('TEXT_GENERATION_MODEL', 'openrouter/auto');
 $defaultTimeout = (int) env('TEXT_GENERATION_TIMEOUT', 60);
+$defaultOpenRouterMaxPromptPrice = (float) env('TEXT_OPENROUTER_MAX_PROMPT_PRICE', 1);
+$defaultOpenRouterMaxCompletionPrice = (float) env('TEXT_OPENROUTER_MAX_COMPLETION_PRICE', 2);
 
-$role = function (string $prefix, string $instructions, bool $humanVoice = false) use ($defaultProvider, $defaultModel, $defaultTimeout): array {
+$role = function (string $prefix, string $instructions, bool $humanVoice = false) use ($defaultProvider, $defaultModel, $defaultTimeout, $defaultOpenRouterMaxPromptPrice, $defaultOpenRouterMaxCompletionPrice): array {
+    $provider = env("TEXT_{$prefix}_PROVIDER", $defaultProvider);
+    $model = env("TEXT_{$prefix}_MODEL", $defaultModel);
+
     return [
-        'provider' => env("TEXT_{$prefix}_PROVIDER", $defaultProvider),
-        'model' => env("TEXT_{$prefix}_MODEL", $defaultModel),
+        'provider' => $provider,
+        'model' => $model,
         'timeout' => (int) env("TEXT_{$prefix}_TIMEOUT", $defaultTimeout),
+        'provider_options' => $provider === 'openrouter' && $model === 'openrouter/auto'
+            ? [
+                'provider' => [
+                    'max_price' => [
+                        'prompt' => (float) env("TEXT_{$prefix}_MAX_PROMPT_PRICE", $defaultOpenRouterMaxPromptPrice),
+                        'completion' => (float) env("TEXT_{$prefix}_MAX_COMPLETION_PRICE", $defaultOpenRouterMaxCompletionPrice),
+                    ],
+                ],
+            ]
+            : [],
         'fallbacks' => [
             [
                 'provider' => env("TEXT_{$prefix}_FALLBACK_PROVIDER"),
@@ -22,7 +37,7 @@ $role = function (string $prefix, string $instructions, bool $humanVoice = false
 };
 
 return [
-    'version' => env('TEXT_GENERATION_CONFIG_VERSION', 'v1'),
+    'version' => env('TEXT_GENERATION_CONFIG_VERSION', 'v2'),
 
     'default_timeout' => $defaultTimeout,
 

@@ -10,8 +10,6 @@ use Closure;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-use function Laravel\Ai\agent;
-
 class TextRoleManager implements TextRoleGenerator
 {
     public function __construct(
@@ -37,7 +35,10 @@ class TextRoleManager implements TextRoleGenerator
 
         foreach ($profile->candidates as $candidate) {
             try {
-                $response = agent(instructions: $this->instructionsFor($profile))->prompt(
+                $response = (new TextRoleAgent(
+                    $this->instructionsFor($profile),
+                    $candidate['providerOptions'],
+                ))->prompt(
                     $request->promptWithContext(),
                     provider: $candidate['provider'],
                     model: $candidate['model'],

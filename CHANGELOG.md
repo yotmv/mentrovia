@@ -6,6 +6,8 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Advertising generator: versioned `advertising_kits` schema scoped to user/business, and an `AdvertisingKitGenerator` service that produces ad angles, Facebook/Instagram ad copy, Google ad concepts, social posts, flyer copy, ad image prompts, a landing page outline, and a first-30-days marketing plan through the `ad_copy` text role with human-voice guardrails; generations reuse the latest brand kit's names, tone, and palette when one exists and record which brand kit version grounded them.
+- Advertising UI: authenticated `/advertising` page with Advertising sidebar nav, generate/new-version actions, version switching, copy buttons for ads, posts, flyer copy, and image prompts, per-section empty fallbacks, and empty/loading/error states including a "generate a brand kit first" hint.
 - `flux_ui_kit` setting (`config/flux-ui.php`, `FLUX_UI_KIT` env): defaults to `flux-free` and auto-switches to `flux-pro` when a licensed `livewire/flux-pro` install is detected, so open-source installs without a Flux Pro license keep a fully working UI.
 - Brand board prompt on brand kits: one production-ready 4K image prompt (two marketing-page mockups plus a typography/color design rail) generated per the brand-kit board structure, regenerable as its own section, with copy affordance in the Branding UI.
 - Hierarchical brand kit color palettes: entries now carry a role label and dominant/supporting prominence; the Branding page renders dominant colors as large swatches and supporting accents as smaller chips.

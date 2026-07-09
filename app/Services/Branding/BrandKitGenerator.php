@@ -10,6 +10,7 @@ use App\Models\Business;
 use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use JsonException;
 
 class BrandKitGenerator
 {
@@ -254,19 +255,76 @@ class BrandKitGenerator
      */
     protected function decodePayload(string $text): array
     {
-        $json = Str::of($text)
-            ->trim()
-            ->replaceMatches('/^```(?:json)?\s*/', '')
-            ->replaceMatches('/\s*```$/', '')
-            ->toString();
+        foreach ($this->jsonObjectCandidates($text) as $json) {
+            try {
+                $payload = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
+            } catch (JsonException) {
+                continue;
+            }
 
-        $payload = json_decode($json, true);
-
-        if (! is_array($payload)) {
-            throw BrandKitGenerationException::unstructuredResponse();
+            if (is_array($payload) && $payload !== [] && ! array_is_list($payload)) {
+                return $payload;
+            }
         }
 
-        return $payload;
+        throw BrandKitGenerationException::unstructuredResponse();
+    }
+
+    /**
+     * Extract complete JSON objects while tolerating explanatory prose and Markdown fences.
+     *
+     * @return array<int, string>
+     */
+    protected function jsonObjectCandidates(string $text): array
+    {
+        $candidates = [];
+        $length = strlen($text);
+
+        for ($start = 0; $start < $length; $start++) {
+            if ($text[$start] !== '{') {
+                continue;
+            }
+
+            $depth = 0;
+            $inString = false;
+            $escaped = false;
+
+            for ($end = $start; $end < $length; $end++) {
+                $character = $text[$end];
+
+                if ($inString) {
+                    if ($escaped) {
+                        $escaped = false;
+                    } elseif ($character === '\\') {
+                        $escaped = true;
+                    } elseif ($character === '"') {
+                        $inString = false;
+                    }
+
+                    continue;
+                }
+
+                if ($character === '"') {
+                    $inString = true;
+
+                    continue;
+                }
+
+                if ($character === '{') {
+                    $depth++;
+                } elseif ($character === '}') {
+                    $depth--;
+
+                    if ($depth === 0) {
+                        $candidates[] = substr($text, $start, $end - $start + 1);
+
+                        break;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     protected function nextVersion(Business $business): int
