@@ -11,6 +11,15 @@ The core V1 business-advisor product is still incomplete in the same broad areas
 
 Git status was clean at the start of this scan.
 
+## UI Kit Policy
+
+Added 2026-07-09. `livewire/flux-pro` stays in `composer.json` during development, but Mentrovia is open source and must remain fully usable on the free edition of Flux UI:
+
+- Every view that uses a Flux Pro component must ship an equivalent flux-free fallback in the same change, gated by the `flux_ui_kit` setting (`config/flux-ui.php`, `App\Enums\FluxUiKit`).
+- `flux_ui_kit` defaults to `flux-free` and auto-switches to `flux-pro` when a licensed install is detected; `FLUX_UI_KIT` pins it.
+- FOSS installs without a license remove the Pro package (`composer remove livewire/flux-pro`); the README documents this.
+- UI tests for Pro-enhanced screens must cover both kits by setting `config(['flux-ui.kit' => ...])`.
+
 ## Verification Snapshot
 
 | Check | Result | Notes |
@@ -375,6 +384,7 @@ Git status was clean at the start of this scan.
 7. Add rate limiting or quota controls for expensive AI actions.
 8. Add cost reporting/guardrails for image and future text generation.
 9. Verify accessibility and responsive behavior for Projects UI and future modules.
+10. Audit every Flux Pro component usage for a working flux-free fallback per the UI Kit Policy.
 
 ## Current Risks / Blockers
 

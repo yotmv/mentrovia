@@ -135,6 +135,16 @@ class Business extends Model
     }
 
     /**
+     * Generated brand kit versions for this business.
+     *
+     * @return HasMany<BrandKit, $this>
+     */
+    public function brandKits(): HasMany
+    {
+        return $this->hasMany(BrandKit::class);
+    }
+
+    /**
      * The name the business currently goes by.
      */
     public function displayName(): string

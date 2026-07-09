@@ -5,6 +5,8 @@ Source plan: `docs/v1-working-plan.md`
 
 These tickets are ordered to finish the current V1 plan with the least churn. Each ticket should keep changes scoped, add or update tests, and leave `php artisan test` and `vendor/bin/phpstan analyse --error-format=table` green. When PHP files are changed, run Pint before handoff.
 
+Standing UI rule (2026-07-09): `livewire/flux-pro` stays installed during development, but any view that uses a Flux Pro component must ship an equivalent flux-free fallback in the same change, gated by `flux_ui_kit` (`config/flux-ui.php`, `App\Enums\FluxUiKit`). Tests for Pro-enhanced screens must cover both kits. FOSS installs without a license remove the Pro package per the README.
+
 ## Ticket 0 - Baseline Verification Cleanup
 
 Priority: P0
@@ -986,6 +988,40 @@ Create the data model and generator service for V1 brand kits.
 - User scoping.
 - Regeneration creates new version or updates intentionally.
 
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added versioned `brand_kits` schema/model/factory scoped to user and business, with a unique business/version constraint and `brandKits()` relationships on `User` and `Business`.
+- Added `BrandKitGenerator` service that generates structured output through the existing `brand_copy` text role: name ideas, tagline options, positioning, tone/voice, color palette, font notes, logo/image prompt pack, and social bios.
+- The generation prompt uses `docs/sample-static-site` as the visual/content style reference (palette, warm/grounded visual direction, plainspoken copy direction) and grounds ideas in the business profile without inventing credentials or claims.
+- The `brand_copy` role's human-voice / avoid-AI-writing guardrail applies automatically via `TextRoleManager` for marketing prose.
+- Regeneration is intentional versioning: each generate call persists a new version and keeps earlier versions.
+- Model responses are sanitized into safe structured values (string lists, validated hex color entries, platform/bio pairs); unstructured non-JSON responses throw `BrandKitGenerationException` without persisting anything.
+- Provider/model/config-version metadata and the decoded raw response are stored on each kit for audit and later UI display.
+- No UI in this ticket (Ticket 17); design/ideas skills were not needed.
+- Repaired a pre-existing dev-DB migration tracking gap: `validation_votes` existed with the correct schema and zero rows but was unrecorded in `migrations`; recorded it as run, then migrated `brand_kits`.
+- Code-review pass completed; mirrored the `version` column default in the model's `$attributes` per existing `ValidationRun` convention.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/BrandKitGeneratorTest.php` passed: 6 tests, 32 assertions covering fake-provider generation, fenced-JSON parsing, persistence, user/business scoping, regeneration versioning, unstructured-response failure, and malformed-section coercion.
+- Full `php artisan test --compact` passed: 284 tests, 1156 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `php artisan migrate --no-interaction` created `brand_kits` on the dev MariaDB.
+
+### Adjustment Notes
+
+Adjusted 2026-07-09 per `.agents/skills/brand-kit`.
+
+- Color palette entries now carry `role` (background/foreground/primary/surface/border/signal/accent) and `prominence` (`dominant` for the 2-3 load-bearing colors, `supporting` for occasional accents); the sanitizer coerces invalid prominence values to `supporting` and older kits without the fields keep rendering.
+- Typography guidance is now framed as typeface directions covering display/headline, body, and UI/label choices, with an explicit instruction not to default to Inter, Roboto, Arial, or system fonts.
+- Added nullable `brand_kits.brand_board_prompt`: one complete production-ready image-generation prompt for a single 3840 x 2160 16:9 brand board (homepage mockup left 40%, supporting page middle 40%, typography-and-color design rail right 20%, dominant colors as large swatches and supporting accents as chips), regenerable as its own section.
+- The full-kit generation prompt is now built from the shared `BrandKitGenerator::Sections` spec map so full generation and per-section regeneration cannot drift.
+- Verification after adjustment: `php artisan test --compact tests/Feature/BrandKitGeneratorTest.php` passed (7 tests, 35 assertions); full suite passed (303 tests, 1216 assertions); PHPStan and Pint passed; migration applied to dev MariaDB.
+
 ## Ticket 17 - Brand Kit UI
 
 Priority: P2
@@ -1015,6 +1051,44 @@ Build a usable brand kit review/edit/save UI.
 - Generate action persists kit.
 - Select/save preferred options.
 - User cannot view another user's kit.
+
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added authenticated `branding` route, `pages.branding` view, Branding sidebar nav item, and `App\Livewire\Branding\Index` Livewire component.
+- Page shows all generated sections: name ideas, tagline options, positioning, tone and voice, color palette swatches, font notes, logo/image prompts, and social bios.
+- Added tap-to-select preferred name, tagline, and primary palette color; picks toggle on/off, save automatically to a new nullable `brand_kits.preferences` JSON column, and surface in a "Your picks" summary strip.
+- Added per-section regeneration: `BrandKitGenerator::regenerateSection()` regenerates one section in place (same version), sanitizes it with the Ticket 16 coercers, refuses empty/unstructured model output without saving, and prunes saved picks that no longer exist in the regenerated options.
+- "New version" action generates a whole new kit version; a version switcher lets the user revisit earlier versions, satisfying generate/review/save/revisit.
+- Added copy-to-clipboard affordances (with "Copied" feedback) for image prompts and social bios.
+- Empty/loading/error states: intake prompt when no profile, dashed empty state with AI-cost hint before the first kit, wire:loading button/dim states, a danger callout when generation fails (nothing persisted), and per-section fallbacks when a section came back unusable.
+- UI work followed the `.agents/skills/design` guideline system (surfaces, typography, buttons, form controls, dark mode, responsive rules) on top of the app's existing Flux/zinc conventions; the ui.sh picker from `.agents/skills/ideas` was not used because the page follows the app's established design system with no competing visual directions to compare — a picker round can be run on request.
+- Code-review pass completed; added missing empty-state fallbacks for tone/voice, font notes, image prompts, and social bios sections.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/BrandingUiTest.php` passed: 10 tests, 31 assertions covering guest redirect, no-profile prompt, empty state, generate persistence, failure error state, preference save/toggle, section regeneration with pick pruning, new-version regeneration, and cross-user scoping.
+- `php artisan test --compact tests/Feature/BrandingUiTest.php tests/Feature/BrandKitGeneratorTest.php` passed after review fixes: 16 tests, 63 assertions.
+- Full `php artisan test --compact` passed: 294 tests, 1187 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `vendor/bin/pint --dirty --format agent` passed.
+- `php artisan migrate --no-interaction` applied the preferences migration on the dev MariaDB.
+- `php artisan route:list --except-vendor --path=branding --no-interaction` shows the branding route.
+- `npm run build` passed (run inside WSL via an nvm-sourced script).
+
+### Adjustment Notes
+
+Adjusted 2026-07-09 per `.agents/skills/brand-kit` and the Flux Pro license addition.
+
+- Added `flux_ui_kit` setting in `config/flux-ui.php` with `FluxUiKit` enum: values `flux-free`/`flux-pro`, defaulting to `flux-free` unless a licensed `livewire/flux-pro` install is detected via Composer; `FLUX_UI_KIT` pins it explicitly. Unknown values fall back to `flux-free` so FOSS installs always render.
+- Split the Branding page into shared section partials (`resources/views/livewire/branding/partials/`); with `flux-pro` the page renders a Flux Pro tabbed layout (Identity / Design system / Assets), and with `flux-free` the same partials render in the original stacked layout.
+- Palette now renders as a design-system rail: dominant colors as large selectable swatches with role labels, supporting accents as smaller selectable chips; kits without prominence metadata render in a single equal grid.
+- Added a Brand board prompt card with copy affordance, scrollable prompt well, per-section regenerate, and empty fallback.
+- "Font notes" heading renamed to "Typography" to match the typeface-direction framing.
+- Decision (2026-07-09): `livewire/flux-pro` intentionally stays in `composer.json` during development; the README documents that FOSS installs without a license must remove it (`composer remove livewire/flux-pro`), and the standing UI rule requires every Pro component usage to ship a flux-free fallback.
+- Verification after adjustment: `php artisan test --compact tests/Feature/BrandingUiTest.php tests/Feature/FluxUiKitTest.php tests/Feature/BrandKitGeneratorTest.php` passed (25 tests, 92 assertions); full suite passed (303 tests, 1216 assertions); PHPStan and Pint passed; `npm run build` passed.
 
 ## Ticket 18 - Advertising Generator
 
@@ -1117,6 +1191,7 @@ Polish user-facing states across V1 workflows.
 - Add stale-answer warning components.
 - Add cost/AI action warnings where appropriate.
 - Add responsive QA pass.
+- Audit every Flux Pro component usage for a working flux-free fallback per the standing UI rule, in both kits' rendered output.
 
 ### Acceptance Criteria
 

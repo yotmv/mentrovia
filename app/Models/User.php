@@ -92,6 +92,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Generated brand kit versions owned by this user.
+     *
+     * @return HasMany<BrandKit, $this>
+     */
+    public function brandKits(): HasMany
+    {
+        return $this->hasMany(BrandKit::class);
+    }
+
+    /**
      * Projects shared with this user by other owners.
      *
      * @return BelongsToMany<Project, $this>

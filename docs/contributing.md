@@ -83,6 +83,7 @@ The intended stack is:
 - Laravel
 - MySQL
 - Livewire
+- Flux UI (free edition required; Pro optional — see the README's Flux UI Editions section)
 - Tailwind CSS
 - Alpine.js
 
@@ -96,6 +97,7 @@ Prefer:
 - Feature tests for major workflows
 - Clear database names
 - Explicit source and validation audit trails
+- Flux Pro components only alongside an equivalent flux-free fallback gated by `flux_ui_kit`, with tests covering both kits
 
 Avoid:
 
@@ -105,6 +107,7 @@ Avoid:
 - Untracked source references
 - Compliance logic hidden in Blade templates
 - UI-only validation for important business rules
+- Pro-only UI paths — every screen must render fully on the free edition of Flux UI
 
 ---
 

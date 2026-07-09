@@ -44,10 +44,30 @@ The planned stack follows the existing Laravel workflow:
 - Laravel
 - MySQL
 - Livewire
+- Flux UI (free edition required; Pro optional, see below)
 - Tailwind CSS
 - Alpine.js
 - Queues for LLM validation and scheduled freshness checks
 - OpenRouter-compatible LLM provider abstraction
+
+## Flux UI Editions (Free vs. Pro)
+
+Mentrovia's UI is built on [Flux UI](https://fluxui.dev). The repository keeps the paid `livewire/flux-pro` package in `composer.json` while the core team develops, but Mentrovia is open source and every screen must work on the free edition.
+
+**If you do not have a Flux Pro license**, remove the Pro package before installing dependencies:
+
+```bash
+composer remove livewire/flux-pro
+```
+
+(or delete the `livewire/flux-pro` entry from `require` and the `flux-pro` repository from `repositories` in `composer.json`, then run `composer install`).
+
+The app adapts automatically through the `flux_ui_kit` setting in `config/flux-ui.php`:
+
+- It defaults to `flux-free` and switches to `flux-pro` only when a licensed `livewire/flux-pro` install is detected.
+- Set `FLUX_UI_KIT=flux-free` or `FLUX_UI_KIT=flux-pro` in `.env` to pin the kit explicitly.
+
+Contributor rule: any view that uses a Flux Pro component must ship an equivalent flux-free fallback in the same change, gated by `App\Enums\FluxUiKit`. Pro-only UI paths are never acceptable.
 
 ## Core Idea
 

@@ -6,6 +6,12 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- `flux_ui_kit` setting (`config/flux-ui.php`, `FLUX_UI_KIT` env): defaults to `flux-free` and auto-switches to `flux-pro` when a licensed `livewire/flux-pro` install is detected, so open-source installs without a Flux Pro license keep a fully working UI.
+- Brand board prompt on brand kits: one production-ready 4K image prompt (two marketing-page mockups plus a typography/color design rail) generated per the brand-kit board structure, regenerable as its own section, with copy affordance in the Branding UI.
+- Hierarchical brand kit color palettes: entries now carry a role label and dominant/supporting prominence; the Branding page renders dominant colors as large swatches and supporting accents as smaller chips.
+- Flux Pro tabbed layout on the Branding page (Identity / Design system / Assets) with a stacked flux-free fallback layout sharing the same section partials.
+- Brand kit UI: authenticated `/branding` page with Branding sidebar nav, generate/new-version actions, per-section regeneration, version switching, tap-to-save preferred name/tagline/primary color, copy buttons for image prompts and social bios, and polished empty/loading/error states.
+- Brand kit data model and generator: versioned `brand_kits` schema scoped to user/business, and a `BrandKitGenerator` service that produces name ideas, taglines, positioning, tone/voice, color palette, font notes, logo/image prompts, and social bios through the `brand_copy` text role with human-voice guardrails and test-fakeable providers.
 - Advisor Q&A hardening: guarded refusals for unsupported deadline/rate/threshold/local claims, necessary follow-up prompts, per-user quota, answer flagging, polished source citations, and `/advisor/history`.
 - Advisor Q&A MVP with authenticated navigation, profile-scoped question input, structured source-aware answers, validation for stale/missing-source/high-risk knowledge, professional-review flags, and persisted conversation history.
 - Banking setup module: authenticated `/banking-setup` checklist with profile-aware bank documents, tax/sales-tax/payroll reserve guidance, completion tracking, and dashboard/roadmap links.
@@ -33,6 +39,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Documented the Flux UI editions policy: `livewire/flux-pro` stays in `composer.json` during development, FOSS installs without a license remove it (`composer remove livewire/flux-pro`), and every Flux Pro component usage must ship a flux-free fallback gated by `flux_ui_kit` (README, contributing guide, V1 working plan and tickets).
 - Documented the real Photo Studio E2E review, runtime requirements, and credential blockers for ticket 8.
 
 ### Fixed
