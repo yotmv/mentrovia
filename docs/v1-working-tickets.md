@@ -484,6 +484,36 @@ Prove the finished Photo Studio works outside fakes with the real S3-compatible 
 - Manual queue worker E2E with real services.
 - `php artisan photos:image-chooser --image-input --count=3`
 
+### Review Notes
+
+Reviewed 2026-07-09.
+
+Status: blocked on real bucket credentials, provider keys, and a production-like queue runtime. Do not mark complete until the manual E2E flow runs against real services.
+
+What is already implemented and covered:
+
+- Private photo storage is wired through `photostudio.disk`, with uploaded/generated prefixes and S3 fallback URL behavior in `Photo::url()` / `Photo::downloadUrl()`.
+- The project upload flow queues derivative generation, then auto-captioning for uncaptioned uploads after normalized LLM input exists.
+- The generation flow analyzes selected uploads, chooses best-value models, fans out generation jobs, records model/cost metadata, queues derivatives, and supports model fallback.
+- The derivative service runs the configured Node/Sharp worker, stores variants beside the source image, records dimensions/sizes, and leaves failed photos retryable.
+- Project sharing tests cover read-only restrictions for generated-photo deletion.
+- `photos:image-chooser --image-input --count=3` is intentionally a real-config diagnostic, not fake-friendly. With blank local provider keys it fails with: "No profiled image model satisfies these requirements. Check provider API keys and thresholds."
+
+Runtime notes for the real E2E pass:
+
+- Populate private local env with `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET`, `AWS_ENDPOINT` or native S3 settings, `AWS_URL` when a bucket needs public URL fallback, and the provider keys needed by the selected models.
+- Verify `temporaryUrl()` support first; if the S3-compatible provider cannot sign private GETs, verify `AWS_URL` fallback behavior before sharing the environment.
+- Run the queue worker with a timeout greater than image-generation HTTP timeout (`GeneratePhotoWithModel` uses 300 seconds) and keep the queue connection `retry_after` greater than the worker timeout to avoid duplicate processing.
+- Verify the worker runtime resolves `PHOTOSTUDIO_NODE_BINARY` to the same Node binary used to install `sharp`.
+- Run the manual E2E checklist from this ticket with a real queue worker, not the sync queue.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/Ai/ImageModelChooserTest.php tests/Feature/PhotoGenerationPipelineTest.php tests/Feature/PhotoDerivativesTest.php tests/Feature/PhotoUploadTest.php tests/Feature/GeneratedPhotoGalleryTest.php tests/Feature/Projects/PhotoCaptionTest.php tests/Feature/Projects/ProjectSharingTest.php` passed: 59 tests, 190 assertions.
+- `php artisan photos:image-chooser --image-input --count=3` ran and failed intentionally under current local config because provider keys are blank.
+- Code-review pass completed; no code changes made.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
 ## Ticket 9 - Compliance Validation Schema
 
 Priority: P1
@@ -521,6 +551,27 @@ Persist validation runs, votes, verdicts, model responses, and audit metadata fo
 - Model relationships.
 - Casts/enums.
 - Factory states.
+
+### Completion Notes
+
+Completed 2026-07-09.
+
+- Added `validation_runs` schema for article/user/business-scoped compliance validation audits.
+- Added `validation_votes` schema for per-model reviewer decisions and raw response metadata.
+- Added `ValidationRunStatus` enum for run lifecycle state.
+- Added `ValidationDecision` enum for reviewer votes and aggregate decisions.
+- Added `ValidationRun` and `ValidationVote` models with JSON, enum, integer, and datetime casts.
+- Added validation history relationships on `KnowledgeArticle`, `User`, and `Business`.
+- Added factories with pending/running/completed/failed run states and reviewer/final-judge vote states.
+- Added feature coverage for model relationships, casts/enums, factory states, and querying validation records by article/user/business.
+- Code-review pass completed; no issues found.
+- Document-code pass completed; `CHANGELOG.md` updated.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/ComplianceValidationSchemaTest.php` passed: 4 tests, 40 assertions.
+- `vendor/bin/phpstan analyse --error-format=table` passed.
+- `php artisan test --compact` passed: 231 tests, 932 assertions.
 
 ## Ticket 10 - Compliance Validation Pipeline
 

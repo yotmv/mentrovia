@@ -125,6 +125,16 @@ class Business extends Model
     }
 
     /**
+     * Compliance validation runs scoped to this business profile.
+     *
+     * @return HasMany<ValidationRun, $this>
+     */
+    public function validationRuns(): HasMany
+    {
+        return $this->hasMany(ValidationRun::class);
+    }
+
+    /**
      * The name the business currently goes by.
      */
     public function displayName(): string

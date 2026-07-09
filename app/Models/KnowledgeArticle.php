@@ -64,6 +64,14 @@ class KnowledgeArticle extends Model
         return $this->hasMany(KnowledgeSource::class);
     }
 
+    /**
+     * @return HasMany<ValidationRun, $this>
+     */
+    public function validationRuns(): HasMany
+    {
+        return $this->hasMany(ValidationRun::class);
+    }
+
     public function freshnessStatus(): FreshnessStatus
     {
         if ($this->sources->isEmpty()) {

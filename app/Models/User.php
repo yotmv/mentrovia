@@ -72,6 +72,16 @@ class User extends Authenticatable
     }
 
     /**
+     * Compliance validation runs requested in this user's context.
+     *
+     * @return HasMany<ValidationRun, $this>
+     */
+    public function validationRuns(): HasMany
+    {
+        return $this->hasMany(ValidationRun::class);
+    }
+
+    /**
      * Projects shared with this user by other owners.
      *
      * @return BelongsToMany<Project, $this>
