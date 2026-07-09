@@ -34,7 +34,10 @@
 
                 @if (auth()->user()?->is_admin)
                     <flux:sidebar.group :heading="__('Admin')" class="grid">
-                        <flux:sidebar.item icon="shield-check" :href="route('admin.knowledge.articles.index')" :current="request()->routeIs('admin.knowledge.*')" wire:navigate>
+                        <flux:sidebar.item icon="shield-check" :href="route('admin.knowledge.reviews.index')" :current="request()->routeIs('admin.knowledge.reviews.*')" wire:navigate>
+                            {{ __('Review Queue') }}
+                        </flux:sidebar.item>
+                        <flux:sidebar.item icon="document-text" :href="route('admin.knowledge.articles.index')" :current="request()->routeIs('admin.knowledge.articles.*')" wire:navigate>
                             {{ __('Knowledge Admin') }}
                         </flux:sidebar.item>
                     </flux:sidebar.group>

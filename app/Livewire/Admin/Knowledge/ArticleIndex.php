@@ -62,7 +62,7 @@ class ArticleIndex extends Component
 
         $article->update([
             'status' => ArticleStatus::NeedsReview,
-            'next_review_at' => now(),
+            'next_review_at' => now()->subDay(),
         ]);
 
         Flux::toast(__('Article marked as needing review.'), variant: 'success');
@@ -73,7 +73,10 @@ class ArticleIndex extends Component
         $article = KnowledgeArticle::findOrFail($id);
         $this->authorize('update', $article);
 
-        $article->update(['status' => ArticleStatus::NeedsReview]);
+        $article->update([
+            'status' => ArticleStatus::NeedsReview,
+            'revalidation_requested_at' => now(),
+        ]);
 
         Flux::toast(__('Revalidation requested. The validation pipeline will process this article when available.'), variant: 'success');
     }
