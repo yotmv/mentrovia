@@ -101,7 +101,7 @@
                 <div class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
                     <flux:heading size="sm">{{ __('Related knowledge') }}</flux:heading>
                     <flux:text size="sm" class="mt-2 text-zinc-500 dark:text-zinc-400">
-                        {{ __('The source articles behind this guide, with freshness and source details.') }}
+                        {{ __('The source articles behind this guide. Open one for freshness and source details.') }}
                     </flux:text>
                     <ul role="list" class="mt-3 space-y-2">
                         @foreach ($articles as $article)

@@ -24,7 +24,9 @@ final readonly class OwnerPayAdvice
     ) {}
 
     /**
-     * Methods the owner can actually use with the current structure.
+     * Methods to present as options: those that fit the current structure,
+     * plus depends-on-structure entries shown informationally when the
+     * structure is undecided.
      *
      * @return list<OwnerPayOption>
      */

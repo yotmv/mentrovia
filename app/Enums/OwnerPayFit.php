@@ -23,7 +23,9 @@ enum OwnerPayFit: string
     }
 
     /**
-     * Whether the method is usable at all for the current structure.
+     * Whether the method should be presented as an option rather than ruled
+     * out. DependsOnStructure counts: those entries are informational for
+     * undecided profiles, not confirmed usable.
      */
     public function isAvailable(): bool
     {
