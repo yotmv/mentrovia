@@ -7,6 +7,7 @@ use App\Enums\TaskConfidence;
 use App\Enums\TaskFrequency;
 use Database\Factories\BusinessTaskFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $due_on
  * @property TaskConfidence $confidence
  * @property bool $requires_professional_review
+ * @property bool $is_active
+ * @property Carbon|null $retired_at
  * @property Carbon|null $completed_at
  * @property string|null $notes
  * @property Carbon|null $created_at
@@ -34,7 +37,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'business_id', 'recurring_task_template_id', 'knowledge_article_id',
     'title', 'description', 'category', 'frequency', 'due_rule', 'due_on',
-    'confidence', 'requires_professional_review', 'completed_at', 'notes',
+    'confidence', 'requires_professional_review', 'is_active', 'retired_at', 'completed_at', 'notes',
 ])]
 class BusinessTask extends Model
 {
@@ -53,8 +56,16 @@ class BusinessTask extends Model
             'due_on' => 'date',
             'confidence' => TaskConfidence::class,
             'requires_professional_review' => 'boolean',
+            'is_active' => 'boolean',
+            'retired_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    /** @param Builder<BusinessTask> $query */
+    public function scopeActive(Builder $query): void
+    {
+        $query->where('is_active', true);
     }
 
     /**

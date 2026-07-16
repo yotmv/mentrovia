@@ -8,6 +8,7 @@ use App\Enums\FreshnessStatus;
 use App\Enums\RiskLevel;
 use Database\Factories\KnowledgeArticleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -61,6 +62,17 @@ class KnowledgeArticle extends Model
             'admin_reviewed_at' => 'datetime',
             'revalidation_requested_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Limit knowledge to material approved for customer use.
+     *
+     * @param  Builder<KnowledgeArticle>  $query
+     * @return Builder<KnowledgeArticle>
+     */
+    public function scopePublished(Builder $query): Builder
+    {
+        return $query->where('status', ArticleStatus::Published);
     }
 
     /**

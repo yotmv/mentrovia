@@ -18,7 +18,7 @@
                 aria-pressed="{{ $isPicked ? 'true' : 'false' }}"
                 @class([
                     'inline-flex items-center gap-1.5 rounded-full border py-1.5 pr-3 text-base/7 sm:text-sm/6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500',
-                    'border-blue-500 bg-blue-50 pl-2 text-blue-900 dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-200' => $isPicked,
+                    'border-moss bg-sage/50 pl-2 text-moss dark:border-sage dark:bg-white/10 dark:text-sage' => $isPicked,
                     'border-zinc-200 pl-3 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-white/5' => ! $isPicked,
                 ])
             >

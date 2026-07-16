@@ -10,7 +10,6 @@ use App\Enums\PhotoTextSource;
 use App\Models\Photo;
 use App\Models\PhotoGenerationBatch;
 use App\Models\Project;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -27,12 +26,22 @@ class PhotoFactory extends Factory
     {
         return [
             'project_id' => Project::factory(),
-            'user_id' => User::factory(),
+            'account_id' => fn (array $attributes): int => Project::query()->whereKey($attributes['project_id'])->firstOrFail()->account_id,
+            'user_id' => fn (array $attributes): int => Project::query()->whereKey($attributes['project_id'])->firstOrFail()->user_id,
             'photo_generation_batch_id' => null,
             'kind' => PhotoKind::Uploaded,
             'disk' => 's3',
             'path' => config('photostudio.uploaded_prefix').fake()->uuid().'/original.jpg',
             'processing_status' => PhotoProcessingStatus::Ready,
+            'derivatives_enqueued_at' => null,
+            'description_enqueued_at' => null,
+            'description_state' => 'pending',
+            'description_operation_uuid' => null,
+            'description_execution_token' => null,
+            'description_fence' => 0,
+            'description_claim_expires_at' => null,
+            'description_provider_started_at' => null,
+            'description_failure_code' => null,
             'original_filename' => fake()->word().'.jpg',
             'text' => fake()->sentence(),
             'text_source' => PhotoTextSource::User,

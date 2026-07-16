@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\BusinessTask;
+use App\Services\Accounts\CurrentAccount;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -11,12 +12,18 @@ class UpdateTaskRequest extends FormRequest
     /**
      * Determine if the user is authorized to make this request.
      */
-    public function authorize(): bool
+    public function authorize(CurrentAccount $currentAccount): bool
     {
         $task = $this->route('task');
+        $user = $this->user();
+        $business = $currentAccount->account()->business;
 
         return $task instanceof BusinessTask
-            && $this->user()?->business?->id === $task->business_id;
+            && $user !== null
+            && $business !== null
+            && $business->id === $task->business_id
+            && $task->is_active
+            && $user->can('operate', $business);
     }
 
     /**

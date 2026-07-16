@@ -8,7 +8,11 @@ The v1 beta starts with Texas-focused guidance for formation, compliance, taxes,
 
 ## What Mentrovia Does
 
-Mentrovia helps a small business owner create a structured company profile and then generates a personalized roadmap based on business stage, legal structure, staffing, sales tax exposure, banking setup, accounting maturity, owner pay questions, branding needs, and recurring compliance tasks.
+Mentrovia helps a small business owner create a structured company profile and maintain a personalized, executable roadmap based on business stage, legal structure, staffing, sales tax exposure, banking setup, accounting maturity, owner pay questions, branding needs, and recurring compliance tasks. The durable plan tracks dependencies, execution status, assignees, internal planning targets, notes, evidence references, and completion separately from profile-derived guidance.
+
+Onboarding separates a new company's five-step setup from an established company's three-section operating baseline. Before the first company profile is finalized, a workspace can save, resume, or restart one encrypted draft; established companies can optionally review and selectively apply one row from Mentrovia's CSV template before submission.
+
+After creation, the company profile becomes a four-section operating record. Workspace members can safely merge section edits, managers can preview and selectively apply one-company CSV updates, and every material change creates encrypted immutable history while synchronizing profile-driven tasks and roadmap guidance. Brand, Advertising, and Advisor outputs record their profile input and show when it is current, stale, or unknown for legacy output.
 
 The product is designed for owners who ask questions like:
 
@@ -34,8 +38,13 @@ V1 beta is intentionally narrow:
 - Owner compensation education
 - First-employee readiness checklist
 - Weekly, monthly, quarterly, and yearly task planner
+- Resumable new-company and established-company onboarding with reviewed one-company CSV intake
+- Section-scoped existing-company profile editing, encrypted immutable history, manager CSV updates, and downstream AI freshness
+- Shared executable company roadmap with dependency-safe next actions, assignments, planning targets, notes, evidence, and completion provenance
 - Branding kit starter flow
 - LLM-backed answer validation against cached advisory content
+- Account-scoped paid-AI/BYOK controls with a manager-only audit, usage, routing, export, and preflight Trust Center
+- Account-scoped Laravel Cashier/Stripe billing with a 14-day Standard trial, owner Checkout/portal controls, signed subscription synchronization, and grandfathered beta access
 
 ## Technical Stack
 
@@ -49,6 +58,7 @@ The planned stack follows the existing Laravel workflow:
 - Alpine.js
 - Queues for LLM validation and scheduled freshness checks
 - OpenRouter-compatible LLM provider abstraction
+- Laravel Cashier with Stripe for account subscriptions and hosted invoices
 
 ## Flux UI Editions (Free vs. Pro)
 
@@ -91,6 +101,8 @@ CHANGELOG.md
 docs/v1-beta-agent-plan.md
 docs/v1-working-plan.md
 docs/v1-working-tickets.md
+docs/deployment-runtime.md
+docs/feature-audit-roadmap.md
 docs/product-roadmap.md
 docs/llm-validation-pipeline.md
 docs/texas-compliance-scope.md
@@ -103,6 +115,8 @@ LICENSE
 - [V1 Beta Agent Plan](docs/v1-beta-agent-plan.md)
 - [V1 Working Plan](docs/v1-working-plan.md)
 - [V1 Working Tickets](docs/v1-working-tickets.md)
+- [Deployment and Runtime Guide](docs/deployment-runtime.md)
+- [Feature Audit and Delivery Roadmap](docs/feature-audit-roadmap.md)
 - [Product Roadmap](docs/product-roadmap.md)
 - [LLM Validation Pipeline](docs/llm-validation-pipeline.md)
 - [Texas Compliance Scope](docs/texas-compliance-scope.md)

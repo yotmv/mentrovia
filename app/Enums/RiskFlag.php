@@ -43,27 +43,28 @@ enum RiskFlag: string
      */
     public function actionUrl(): string
     {
-        return match ($this) {
-            self::PersonalBankCommingling,
-            self::MissingEin,
-            self::SalesTaxPermitGap,
-            self::EmployeesWithoutPayroll => route('banking-setup'),
-            self::NoBookkeeping => route('knowledge.articles.index', ['category' => ArticleCategory::Accounting->value]),
-            self::UnclearLegalStructure => route('business.intake'),
-            self::OperatingWithoutEntityDecision => route('knowledge.articles.index', ['category' => ArticleCategory::Formation->value]),
-        };
+        return route('guides.show', $this->guideTopic());
     }
 
     public function actionLabel(): string
     {
         return match ($this) {
-            self::PersonalBankCommingling,
-            self::MissingEin,
-            self::SalesTaxPermitGap,
-            self::EmployeesWithoutPayroll => 'Open banking checklist',
-            self::NoBookkeeping => 'Read the bookkeeping guidance',
-            self::UnclearLegalStructure => 'Update your company profile',
-            self::OperatingWithoutEntityDecision => 'Compare legal structures',
+            self::PersonalBankCommingling => 'Open the banking guide',
+            self::MissingEin, self::UnclearLegalStructure, self::OperatingWithoutEntityDecision => 'Open the formation guide',
+            self::SalesTaxPermitGap => 'Open the sales-tax guide',
+            self::NoBookkeeping => 'Open the bookkeeping guide',
+            self::EmployeesWithoutPayroll => 'Open the payroll guide',
+        };
+    }
+
+    private function guideTopic(): GuideTopic
+    {
+        return match ($this) {
+            self::PersonalBankCommingling => GuideTopic::Banking,
+            self::MissingEin, self::UnclearLegalStructure, self::OperatingWithoutEntityDecision => GuideTopic::Formation,
+            self::SalesTaxPermitGap => GuideTopic::SalesTax,
+            self::NoBookkeeping => GuideTopic::Bookkeeping,
+            self::EmployeesWithoutPayroll => GuideTopic::Payroll,
         };
     }
 }

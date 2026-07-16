@@ -24,6 +24,9 @@ class AdvertisingKitFactory extends Factory
             'user_id' => User::factory(),
             'brand_kit_id' => null,
             'version' => 1,
+            'profile_revision' => null,
+            'profile_fingerprint' => null,
+            'brand_content_fingerprint' => null,
             'ad_angles' => [
                 'Lead with the one-crew promise: the people who measure are the people who install.',
                 'Lead with turnaround time for homeowners mid-renovation.',

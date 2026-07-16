@@ -57,16 +57,6 @@ php artisan flux:icon crown grip-vertical github
 </flux:field>
 ```
 
-### Modals
-
-<!-- Modal -->
-```blade
-<flux:modal wire:model="showModal">
-    <flux:heading>Title</flux:heading>
-    <p>Content</p>
-</flux:modal>
-```
-
 ### Tables
 
 <!-- Table -->

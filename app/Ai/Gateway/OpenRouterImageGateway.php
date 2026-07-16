@@ -2,18 +2,26 @@
 
 namespace App\Ai\Gateway;
 
+use App\Ai\Images\GeneratedImageResponseValidator;
 use App\Ai\Responses\CostAwareImageResponse;
+use App\Services\Ai\ByokHttpFactory;
+use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Http\Client\PendingRequest;
 use Laravel\Ai\Contracts\Providers\ImageProvider;
 use Laravel\Ai\Files\Image;
 use Laravel\Ai\Gateway\OpenRouter\OpenRouterGateway;
 use Laravel\Ai\Providers\Provider;
-use Laravel\Ai\Responses\Data\GeneratedImage;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\ImageResponse;
 
 class OpenRouterImageGateway extends OpenRouterGateway
 {
+    public function __construct(Dispatcher $events, private ?ByokHttpFactory $byokHttp = null)
+    {
+        parent::__construct($events);
+    }
+
     /**
      * Generate an image, additionally requesting OpenRouter's usage
      * accounting so the actual billed USD cost rides along with the
@@ -62,7 +70,7 @@ class OpenRouterImageGateway extends OpenRouterGateway
             $url = $image['image_url']['url'] ?? '';
 
             if (preg_match('/^data:(image\/[\w+.-]+);base64,(.+)$/', $url, $matches)) {
-                return new GeneratedImage($matches[2], $matches[1]);
+                return GeneratedImageResponseValidator::fromBase64($matches[2], $matches[1]);
             }
 
             return null;
@@ -76,5 +84,23 @@ class OpenRouterImageGateway extends OpenRouterGateway
             new Meta($provider->name(), $data['model'] ?? $model),
             isset($usage['cost']) ? (float) $usage['cost'] : null,
         );
+    }
+
+    protected function client(Provider $provider, ?int $timeout = null): PendingRequest
+    {
+        if ($this->byokHttp === null) {
+            return parent::client($provider, $timeout);
+        }
+
+        $config = $provider->additionalConfiguration();
+
+        return $this->byokHttp->baseUrl($this->baseUrl($provider))
+            ->withToken($provider->providerCredentials()['key'])
+            ->withHeaders(array_filter([
+                'HTTP-Referer' => $config['http_referer'] ?? null,
+                'X-OpenRouter-Title' => $config['x_title'] ?? null,
+            ]))
+            ->timeout($timeout ?? 60)
+            ->throw();
     }
 }

@@ -171,7 +171,7 @@ test('the brand board prompt section can be regenerated in place', function () {
     $business = Business::factory()->create();
     $kit = BrandKit::factory()->forBusiness($business)->create(['brand_board_prompt' => 'Old board prompt.']);
 
-    app(BrandKitGenerator::class)->regenerateSection($kit, 'brand_board_prompt');
+    app(BrandKitGenerator::class)->regenerateSection($kit, 'brand_board_prompt', $kit->user);
 
     expect($kit->refresh()->brand_board_prompt)->toContain('Fresh 3840 x 2160')
         ->and($kit->version)->toBe(1);

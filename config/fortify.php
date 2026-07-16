@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EqualizePasswordResetResponseTime;
 use Laravel\Fortify\Features;
 
 return [
@@ -101,7 +102,9 @@ return [
     |
     */
 
-    'middleware' => ['web'],
+    'middleware' => ['web', EqualizePasswordResetResponseTime::class, 'throttle:fortify-sensitive'],
+
+    'password_reset_min_response_ms' => (int) env('PASSWORD_RESET_MIN_RESPONSE_MS', 250),
 
     /*
     |--------------------------------------------------------------------------

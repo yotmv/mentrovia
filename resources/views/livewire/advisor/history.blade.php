@@ -25,6 +25,7 @@
                 @php
                     $answer = $message->meta['answer'] ?? [];
                     $feedback = $message->meta['feedback'] ?? null;
+                    $profileFreshness = $this->messageFreshness($message);
                 @endphp
 
                 <article class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700" wire:key="advisor-history-{{ $message->id }}">
@@ -38,8 +39,17 @@
                                 @if (is_array($feedback) && ($feedback['reported'] ?? false))
                                     <flux:badge size="sm" color="red">{{ __('Reported') }}</flux:badge>
                                 @endif
+                                <x-profile-freshness :freshness="$profileFreshness" />
                             </div>
                             <flux:text class="mt-3 text-pretty">{{ $message->content }}</flux:text>
+                            @if ($profileFreshness === App\Enums\ProfileFreshness::Stale)
+                                <flux:text size="sm" class="mt-3 text-amber-700 dark:text-amber-300">
+                                    {{ __('Your company profile changed after this answer was generated.') }}
+                                    <flux:button size="sm" variant="ghost" wire:click="askAgain('{{ $message->id }}')">{{ __('Ask again with current profile') }}</flux:button>
+                                </flux:text>
+                            @elseif ($profileFreshness === App\Enums\ProfileFreshness::Unknown)
+                                <flux:text size="sm" class="mt-3 text-zinc-500 dark:text-zinc-400">{{ __('Input version not recorded') }}</flux:text>
+                            @endif
                         </div>
                         <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
                             {{ $message->created_at?->format('M j, Y g:i A') }}

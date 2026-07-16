@@ -15,15 +15,8 @@
                 @endforeach
             </select>
 
-            <select name="status" class="rounded-xl px-3 py-2 text-sm ring-1 ring-ink/10 dark:ring-white/10 dark:bg-zinc-900">
-                <option value="">{{ __('All statuses') }}</option>
-                @foreach ($statuses as $status)
-                    <option value="{{ $status->value }}" {{ $selectedStatus === $status->value ? 'selected' : '' }}>{{ $status->label() }}</option>
-                @endforeach
-            </select>
-
             <flux:button type="submit" variant="ghost" size="sm">{{ __('Filter') }}</flux:button>
-            @if ($selectedCategory || $selectedStatus)
+            @if ($selectedCategory)
                 <flux:link :href="route('knowledge.articles.index')" class="text-sm">{{ __('Clear') }}</flux:link>
             @endif
         </form>
@@ -47,12 +40,6 @@
                                     \App\Enums\RiskLevel::Medium => 'amber',
                                     \App\Enums\RiskLevel::Low => 'zinc',
                                 }">{{ $article->risk_level->label() }}</flux:badge>
-                                <flux:badge size="sm" :color="match ($article->status) {
-                                    \App\Enums\ArticleStatus::Published => 'green',
-                                    \App\Enums\ArticleStatus::NeedsReview => 'amber',
-                                    \App\Enums\ArticleStatus::Draft => 'zinc',
-                                    \App\Enums\ArticleStatus::Archived => 'zinc',
-                                }">{{ $article->status->label() }}</flux:badge>
                             </div>
                         </div>
                         <flux:text size="sm" class="mt-1 text-ink/60 dark:text-zinc-400">

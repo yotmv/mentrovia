@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ArticleCategory;
 use App\Enums\FilingConfidence;
+use App\Enums\GuideTopic;
 use App\Enums\LegalStructure;
 use App\Enums\RoadmapPhase;
 use App\Enums\RoadmapPriority;
@@ -93,8 +94,8 @@ class RoadmapBuilder
                     default => RoadmapStatus::ToDo,
                 },
                 reviewer: __('Attorney or CPA'),
-                href: route('knowledge.articles.index', ['category' => ArticleCategory::Formation->value]),
-                hrefLabel: __('Compare legal structures'),
+                href: route('guides.show', GuideTopic::Formation),
+                hrefLabel: __('Open the formation guide'),
             ),
 
             // Legal setup
@@ -171,8 +172,8 @@ class RoadmapBuilder
                     default => RoadmapStatus::ToDo,
                 },
                 reviewer: __('CPA'),
-                href: route('knowledge.articles.index', ['category' => ArticleCategory::SalesTax->value]),
-                hrefLabel: __('Read the sales tax guidance'),
+                href: route('guides.show', GuideTopic::SalesTax),
+                hrefLabel: __('Open the sales-tax guide'),
             ),
             new RoadmapItem(
                 key: 'franchise-tax-awareness',
@@ -203,8 +204,8 @@ class RoadmapBuilder
                 whyItMatters: __('Mixing personal and business money undermines bookkeeping, taxes, and the liability separation an entity is supposed to provide.'),
                 priority: RoadmapPriority::Required,
                 status: $business->has_business_bank ? RoadmapStatus::Complete : RoadmapStatus::ToDo,
-                href: route('banking-setup'),
-                hrefLabel: __('Open the banking checklist'),
+                href: route('guides.show', GuideTopic::Banking),
+                hrefLabel: __('Open the banking guide'),
             ),
             new RoadmapItem(
                 key: 'tax-reserve-account',
@@ -213,7 +214,7 @@ class RoadmapBuilder
                 whyItMatters: __('Moving a slice of every deposit into a reserve account means sales tax and estimated taxes are already funded when they come due.'),
                 priority: RoadmapPriority::Recommended,
                 status: RoadmapStatus::ToDo,
-                href: route('banking-setup'),
+                href: route('guides.show', GuideTopic::Banking),
                 hrefLabel: __('Plan reserve accounts'),
             ),
 
@@ -225,8 +226,8 @@ class RoadmapBuilder
                 whyItMatters: __('Clean books power every tax filing, loan application, and pricing decision. Starting early is dramatically easier than cleaning up later.'),
                 priority: RoadmapPriority::Required,
                 status: $business->has_bookkeeping ? RoadmapStatus::Complete : RoadmapStatus::ToDo,
-                href: route('knowledge.articles.index', ['category' => ArticleCategory::Accounting->value]),
-                hrefLabel: __('Read the bookkeeping guidance'),
+                href: route('guides.show', GuideTopic::Bookkeeping),
+                hrefLabel: __('Open the bookkeeping guide'),
             ),
             new RoadmapItem(
                 key: 'receipt-retention',
@@ -257,8 +258,8 @@ class RoadmapBuilder
                     $business->has_payroll => RoadmapStatus::Complete,
                     default => RoadmapStatus::ToDo,
                 },
-                href: route('knowledge.articles.index', ['category' => ArticleCategory::Payroll->value]),
-                hrefLabel: __('Read the payroll guidance'),
+                href: route('guides.show', GuideTopic::Payroll),
+                hrefLabel: __('Open the payroll guide'),
             ),
             new RoadmapItem(
                 key: 'twc-registration',
@@ -293,8 +294,8 @@ class RoadmapBuilder
                 whyItMatters: __('You will need each contractor\'s W-9 to issue 1099-NEC forms in January. Collecting them before the first payment is far easier than chasing them at year end.'),
                 priority: RoadmapPriority::Recommended,
                 status: $business->uses_contractors ? RoadmapStatus::ToDo : RoadmapStatus::NotApplicable,
-                href: route('knowledge.articles.index', ['category' => ArticleCategory::Contractors->value]),
-                hrefLabel: __('Read the contractor guidance'),
+                href: route('guides.show', GuideTopic::Payroll),
+                hrefLabel: __('Open the payroll guide'),
             ),
 
             // Owner pay
@@ -306,8 +307,8 @@ class RoadmapBuilder
                 priority: RoadmapPriority::Recommended,
                 status: $structure->isUndecided() ? RoadmapStatus::NeedsInfo : RoadmapStatus::ToDo,
                 reviewer: __('CPA'),
-                href: route('owner-pay'),
-                hrefLabel: __('Compare your owner-pay options'),
+                href: route('guides.show', GuideTopic::OwnerPay),
+                hrefLabel: __('Open the owner-pay guide'),
             ),
 
             // Branding

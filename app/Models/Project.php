@@ -16,13 +16,14 @@ use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $user_id
+ * @property int|null $user_id
+ * @property int $account_id
  * @property string $name
  * @property Carbon $project_date
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['user_id', 'name', 'project_date'])]
+#[Fillable(['user_id', 'account_id', 'name', 'project_date'])]
 class Project extends Model
 {
     /** @use HasFactory<ProjectFactory> */
@@ -48,6 +49,12 @@ class Project extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    /** @return BelongsTo<Account, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
     /**
      * @return BelongsToMany<User, $this>
      */
@@ -56,6 +63,12 @@ class Project extends Model
         return $this->belongsToMany(User::class)
             ->withPivot('permission')
             ->withTimestamps();
+    }
+
+    /** @return HasMany<ProjectInvitation, $this> */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(ProjectInvitation::class);
     }
 
     /**
@@ -96,10 +109,10 @@ class Project extends Model
      * @param  Builder<self>  $query
      * @return Builder<self>
      */
-    public function scopeAccessibleTo(Builder $query, User $user): Builder
+    public function scopeAccessibleTo(Builder $query, User $user, Account $account): Builder
     {
-        return $query->where(function (Builder $query) use ($user) {
-            $query->where('user_id', $user->id)
+        return $query->where(function (Builder $query) use ($user, $account) {
+            $query->where('account_id', $account->id)
                 ->orWhereHas('sharedUsers', fn (Builder $query) => $query->whereKey($user->id));
         });
     }
@@ -127,7 +140,7 @@ class Project extends Model
 
     public function isOwnedBy(User $user): bool
     {
-        return $this->user_id === $user->id;
+        return $this->account()->whereHas('members', fn (Builder $query): Builder => $query->whereKey($user->id))->exists();
     }
 
     public function isViewableBy(User $user): bool

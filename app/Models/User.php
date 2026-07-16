@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\QueuedResetPasswordNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,9 +20,11 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
  * @property int $id
+ * @property int|null $current_account_id
  * @property string $name
  * @property string $email
  * @property Carbon|null $email_verified_at
+ * @property Carbon|null $account_erasure_started_at
  * @property string $password
  * @property bool $is_admin
  * @property string|null $two_factor_secret
@@ -30,9 +34,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'email', 'password', 'is_admin'])]
+#[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, TwoFactorAuthenticatable;
@@ -46,9 +50,31 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'account_erasure_started_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
         ];
+    }
+
+    /** @return BelongsToMany<Account, $this, AccountMembership, 'membership'> */
+    public function accounts(): BelongsToMany
+    {
+        return $this->belongsToMany(Account::class)
+            ->using(AccountMembership::class)
+            ->as('membership')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    /** @return BelongsTo<Account, $this> */
+    public function currentAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'current_account_id');
+    }
+
+    public function belongsToAccount(Account $account): bool
+    {
+        return $this->accounts()->whereKey($account->id)->exists();
     }
 
     /**
@@ -59,6 +85,24 @@ class User extends Authenticatable
     public function business(): HasOne
     {
         return $this->hasOne(Business::class);
+    }
+
+    /** @return HasOne<AiAccountSetting, $this> */
+    public function aiAccountSetting(): HasOne
+    {
+        return $this->hasOne(AiAccountSetting::class, 'account_id', 'current_account_id');
+    }
+
+    /** @return HasMany<AiProviderCredential, $this> */
+    public function aiProviderCredentials(): HasMany
+    {
+        return $this->hasMany(AiProviderCredential::class, 'account_id', 'current_account_id');
+    }
+
+    /** @return HasMany<AiModelPreference, $this> */
+    public function aiModelPreferences(): HasMany
+    {
+        return $this->hasMany(AiModelPreference::class, 'account_id', 'current_account_id');
     }
 
     /**
@@ -102,6 +146,14 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasMany<UserFeedback, $this>
+     */
+    public function feedback(): HasMany
+    {
+        return $this->hasMany(UserFeedback::class);
+    }
+
+    /**
      * Generated advertising kit versions owned by this user.
      *
      * @return HasMany<AdvertisingKit, $this>
@@ -121,6 +173,14 @@ class User extends Authenticatable
         return $this->belongsToMany(Project::class)
             ->withPivot('permission')
             ->withTimestamps();
+    }
+
+    /**
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification(#[\SensitiveParameter] $token): void
+    {
+        $this->notify(new QueuedResetPasswordNotification($token));
     }
 
     /**

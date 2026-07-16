@@ -3,6 +3,7 @@
 namespace App\Ai\Images;
 
 use App\Ai\Images\Exceptions\NoUsableImageModelException;
+use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 
@@ -78,8 +79,12 @@ class ImageModelChooser
      *
      * @throws NoUsableImageModelException
      */
-    public function chooseMany(ImageRequirements $requirements, int $count): Collection
-    {
+    public function chooseMany(
+        ImageRequirements $requirements,
+        int $count,
+        ?User $user = null,
+        ?int $accountId = null,
+    ): Collection {
         $ranked = $this->ranked($requirements);
 
         if ($ranked->isEmpty()) {
@@ -88,7 +93,7 @@ class ImageModelChooser
 
         $shortlist = $ranked->take((int) config('photostudio.chooser.llm.top_candidates', 8));
 
-        $ordered = $this->applyArbiterOrder($shortlist, $ranked, $requirements, $count);
+        $ordered = $this->applyArbiterOrder($shortlist, $ranked, $requirements, $count, $user, $accountId);
 
         $selected = $this->takeWithFamilyDiversity($ordered, $count);
 
@@ -106,15 +111,19 @@ class ImageModelChooser
      *
      * @return Collection<int, ImageModelCandidate>
      */
-    public function forConfiguredProvider(ImageRequirements $requirements, int $count): Collection
-    {
+    public function forConfiguredProvider(
+        ImageRequirements $requirements,
+        int $count,
+        ?User $user = null,
+        ?int $accountId = null,
+    ): Collection {
         $provider = config('photostudio.provider', 'auto');
 
         if ($provider !== 'auto') {
             return collect([$this->catalog->find($provider, (string) config('photostudio.model'))]);
         }
 
-        return $this->chooseMany($requirements, $count);
+        return $this->chooseMany($requirements, $count, $user, $accountId);
     }
 
     /**
@@ -130,8 +139,10 @@ class ImageModelChooser
         Collection $ranked,
         ImageRequirements $requirements,
         int $count,
+        ?User $user = null,
+        ?int $accountId = null,
     ): Collection {
-        $choiceIds = $this->arbiter->pick($requirements, $shortlist, $count);
+        $choiceIds = $this->arbiter->pick($requirements, $shortlist, $count, $user, $accountId);
 
         if ($choiceIds === null || $choiceIds === []) {
             return $ranked;

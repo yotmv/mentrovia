@@ -4,6 +4,7 @@
         @include('partials.head')
     </head>
     <body class="min-h-dvh bg-paper font-sans text-ink antialiased dark:bg-zinc-950 dark:text-zinc-100">
+        <a href="#main-content" class="sr-only z-50 rounded-md bg-moss px-4 py-2 text-base font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{{ __('Skip to content') }}</a>
         <flux:sidebar sticky collapsible="mobile" class="border-e border-ink/10 bg-cream dark:border-white/10 dark:bg-zinc-900">
             <flux:sidebar.header>
                 <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
@@ -11,22 +12,28 @@
             </flux:sidebar.header>
 
             <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Overview')" class="grid">
+                <flux:sidebar.group :heading="__('Your business')" class="grid">
                     <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard') }}
+                        {{ __('Today') }}
                     </flux:sidebar.item>
-                    <flux:sidebar.item icon="building-storefront" :href="route('business.intake')" :current="request()->routeIs('business.*')" wire:navigate>
-                        {{ __('Company Profile') }}
+                    <flux:sidebar.item icon="building-storefront" :href="route('business.overview')" :current="request()->routeIs('business.*')" wire:navigate>
+                        {{ __('Business') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('Guidance')" class="grid">
+                <flux:sidebar.group :heading="__('Plan and operate')" class="grid">
                     <flux:sidebar.item icon="map" :href="route('roadmap')" :current="request()->routeIs('roadmap')" wire:navigate>
-                        {{ __('Roadmap') }}
+                        {{ __('Plan') }}
                     </flux:sidebar.item>
                     <flux:sidebar.item icon="calendar-days" :href="route('tasks.index')" :current="request()->routeIs('tasks.*')" wire:navigate>
                         {{ __('Tasks') }}
                     </flux:sidebar.item>
+                    <flux:sidebar.item icon="book-open-text" :href="route('guides.index')" :current="request()->routeIs('guides.*') || request()->routeIs('banking-setup', 'owner-pay')" wire:navigate>
+                        {{ __('Guides') }}
+                    </flux:sidebar.item>
+                </flux:sidebar.group>
+
+                <flux:sidebar.group :heading="__('Ask and learn')" class="grid">
                     <flux:sidebar.item icon="sparkles" :href="route('advisor')" :current="request()->routeIs('advisor*')" wire:navigate>
                         {{ __('Advisor') }}
                     </flux:sidebar.item>
@@ -35,15 +42,9 @@
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
-                <flux:sidebar.group :heading="__('Marketing')" class="grid">
-                    <flux:sidebar.item icon="photo" :href="route('projects.index')" :current="request()->routeIs('projects.*')" wire:navigate>
-                        {{ __('Projects') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="swatch" :href="route('branding')" :current="request()->routeIs('branding')" wire:navigate>
-                        {{ __('Branding') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="megaphone" :href="route('advertising')" :current="request()->routeIs('advertising')" wire:navigate>
-                        {{ __('Advertising') }}
+                <flux:sidebar.group :heading="__('Grow')" class="grid">
+                    <flux:sidebar.item icon="arrow-trending-up" :href="route('grow')" :current="request()->routeIs('grow', 'branding', 'advertising', 'projects.*')" wire:navigate>
+                        {{ __('Growth workspace') }}
                     </flux:sidebar.item>
                 </flux:sidebar.group>
 
@@ -88,6 +89,7 @@
                                 <div class="grid flex-1 text-start text-sm leading-tight">
                                     <flux:heading class="truncate">{{ auth()->user()->name }}</flux:heading>
                                     <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
+                                    <flux:text class="truncate" size="sm">{{ auth()->user()->currentAccount?->name }}</flux:text>
                                 </div>
                             </div>
                         </div>
@@ -98,6 +100,12 @@
                     <flux:menu.radio.group>
                         <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
                             {{ __('Settings') }}
+                        </flux:menu.item>
+                        <flux:menu.item :href="route('account.edit')" icon="building-office" wire:navigate>
+                            {{ __('Workspace') }}
+                        </flux:menu.item>
+                        <flux:menu.item :href="route('feedback.create', ['page' => '/'.request()->path()])" icon="chat-bubble-left-right" wire:navigate>
+                            {{ __('Send feedback') }}
                         </flux:menu.item>
                     </flux:menu.radio.group>
 

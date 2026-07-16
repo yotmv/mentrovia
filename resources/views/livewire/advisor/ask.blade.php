@@ -11,7 +11,7 @@
             <flux:button variant="ghost" size="sm" :href="route('advisor.history')" wire:navigate icon="clock">
                 {{ __('History') }}
             </flux:button>
-            <flux:button variant="ghost" size="sm" :href="route('business.intake')" wire:navigate icon="pencil-square">
+            <flux:button variant="ghost" size="sm" :href="$this->business === null ? route('onboarding.welcome') : route('business.edit')" wire:navigate icon="pencil-square">
                 {{ $this->business === null ? __('Create profile') : __('Edit profile') }}
             </flux:button>
         </div>
@@ -24,7 +24,7 @@
                 <flux:text class="mt-3">
                     {{ __('Advisor answers are scoped to your company profile so the guidance can account for your Texas location, entity type, sales tax exposure, employees, and contractors.') }}
                 </flux:text>
-                <flux:button variant="primary" :href="route('business.intake')" wire:navigate class="mt-6">
+                <flux:button variant="primary" :href="route('onboarding.welcome')" wire:navigate class="mt-6">
                     {{ __('Tell us about your business') }}
                 </flux:button>
             </div>
@@ -32,8 +32,25 @@
     @else
         <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <div class="space-y-6">
-                <form wire:submit="ask" class="rounded-lg border border-zinc-200 p-5 dark:border-zinc-700">
+                <form
+                    id="advisor-question"
+                    wire:submit="ask"
+                    x-data
+                    x-on:advisor-focus-question.window="$nextTick(() => $refs.advisorQuestion?.focus())"
+                    class="rounded-2xl bg-white p-5 ring-1 ring-ink/10 dark:bg-zinc-900 dark:ring-white/10"
+                >
+                    @if ($this->conversationMessages->isEmpty())
+                        <div class="mb-5">
+                            <p class="font-mono text-base font-medium tracking-wide text-moss sm:text-sm dark:text-sage">{{ __('Start with your context') }}</p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                @foreach ($this->starterQuestions as $starterQuestion)
+                                    <flux:button type="button" size="sm" variant="ghost" wire:click="chooseStarterQuestion(@js($starterQuestion))" wire:key="starter-question-{{ $loop->index }}">{{ $starterQuestion }}</flux:button>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <flux:textarea
+                        x-ref="advisorQuestion"
                         wire:model="question"
                         name="question"
                         :label="__('Question')"
@@ -52,6 +69,22 @@
                     </div>
                 </form>
 
+                @if ($aiError !== null)
+                    <div role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" x-data x-init="$nextTick(() => $el.focus())">
+                        <flux:callout variant="danger" icon="exclamation-triangle">
+                            <flux:callout.heading>{{ __('Advisor could not answer') }}</flux:callout.heading>
+                            <flux:callout.text>{{ $aiError }}</flux:callout.text>
+                            @if ($aiErrorShowsSettings)
+                                <x-slot name="actions">
+                                    <flux:button size="sm" :href="route('ai.edit')" wire:navigate>
+                                        {{ __('Review AI settings') }}
+                                    </flux:button>
+                                </x-slot>
+                            @endif
+                        </flux:callout>
+                    </div>
+                @endif
+
                 @error('question')
                     <flux:text size="sm" class="text-red-600 dark:text-red-400">{{ $message }}</flux:text>
                 @enderror
@@ -69,6 +102,7 @@
                             @php
                                 $answer = $message->meta['answer'] ?? null;
                                 $feedback = $message->meta['feedback'] ?? null;
+                                $profileFreshness = $message->role === 'assistant' ? $this->messageFreshness($message) : null;
                             @endphp
 
                             <article
@@ -86,6 +120,9 @@
                                         @if (is_array($feedback) && ($feedback['reported'] ?? false))
                                             <flux:badge size="sm" color="red">{{ __('Reported') }}</flux:badge>
                                         @endif
+                                        @if ($profileFreshness !== null)
+                                            <x-profile-freshness :freshness="$profileFreshness" />
+                                        @endif
                                     </div>
                                     <div class="text-end">
                                         <flux:text size="sm" class="text-zinc-500 dark:text-zinc-400">
@@ -96,7 +133,25 @@
 
                                 <flux:text class="text-pretty">{{ $message->content }}</flux:text>
 
+                                @if ($profileFreshness === App\Enums\ProfileFreshness::Stale)
+                                    <flux:text size="sm" class="mt-3 text-amber-700 dark:text-amber-300">
+                                        {{ __('Your company profile changed after this answer was generated.') }}
+                                        <flux:button size="sm" variant="ghost" wire:click="askAgain('{{ $message->id }}')">{{ __('Ask again with current profile') }}</flux:button>
+                                    </flux:text>
+                                @elseif ($profileFreshness === App\Enums\ProfileFreshness::Unknown)
+                                    <flux:text size="sm" class="mt-3 text-zinc-500 dark:text-zinc-400">{{ __('Input version not recorded') }}</flux:text>
+                                @endif
+
                                 @if (is_array($answer))
+                                    @if (collect($answer['source_freshness'] ?? [])->contains(fn (array $source): bool => in_array($source['freshness_status'] ?? null, ['stale', 'missing_sources'], true)))
+                                        <flux:callout icon="exclamation-triangle" color="amber" class="mt-5">
+                                            <flux:callout.heading>{{ __('Source refresh needed') }}</flux:callout.heading>
+                                            <flux:callout.text>
+                                                {{ __('This answer relies on source material that is stale or missing source details. Treat it as educational context and confirm the current requirement with an official source or qualified professional before acting.') }}
+                                            </flux:callout.text>
+                                        </flux:callout>
+                                    @endif
+
                                     @if (! empty($answer['checklist']))
                                         <div class="mt-5">
                                             <flux:text size="sm" variant="strong">{{ __('Checklist') }}</flux:text>

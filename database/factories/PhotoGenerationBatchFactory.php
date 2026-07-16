@@ -5,7 +5,6 @@ namespace Database\Factories;
 use App\Enums\GenerationBatchStatus;
 use App\Models\PhotoGenerationBatch;
 use App\Models\Project;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -22,8 +21,17 @@ class PhotoGenerationBatchFactory extends Factory
     {
         return [
             'project_id' => Project::factory(),
-            'user_id' => User::factory(),
+            'account_id' => fn (array $attributes): int => Project::query()->whereKey($attributes['project_id'])->firstOrFail()->account_id,
+            'user_id' => fn (array $attributes): int => Project::query()->whereKey($attributes['project_id'])->firstOrFail()->user_id,
             'status' => GenerationBatchStatus::Pending,
+            'analysis_enqueued_at' => null,
+            'analysis_state' => 'pending',
+            'analysis_operation_uuid' => null,
+            'analysis_execution_token' => null,
+            'analysis_fence' => 0,
+            'analysis_claim_expires_at' => null,
+            'analysis_provider_started_at' => null,
+            'analysis_failure_code' => null,
             'user_text' => fake()->sentence(),
             'input_photo_ids' => [],
             'analysis' => null,

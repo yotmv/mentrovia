@@ -15,11 +15,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
- * @property int $user_id
+ * @property int|null $user_id
+ * @property int $account_id
  * @property string|null $name
  * @property string|null $desired_name
  * @property YesNoUnsure $dba_status
@@ -48,17 +50,19 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $first_sale_on
  * @property Carbon|null $first_employee_on
  * @property FilingConfidence|null $filing_confidence
+ * @property int $profile_revision
+ * @property string|null $profile_fingerprint
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'user_id', 'name', 'desired_name', 'dba_status', 'stage', 'legal_structure',
+    'user_id', 'account_id', 'name', 'desired_name', 'dba_status', 'stage', 'legal_structure',
     'tax_classification', 'industry', 'city', 'county', 'state', 'location_type',
     'address', 'owner_count', 'employee_count', 'uses_contractors',
     'sells_taxable_goods', 'sells_taxable_services', 'has_sales_tax_permit',
     'has_ein', 'has_business_bank', 'has_bookkeeping', 'has_payroll',
     'annual_revenue_range', 'monthly_revenue_range', 'started_on',
-    'first_sale_on', 'first_employee_on', 'filing_confidence',
+    'first_sale_on', 'first_employee_on', 'filing_confidence', 'profile_revision', 'profile_fingerprint',
 ])]
 class Business extends Model
 {
@@ -93,6 +97,7 @@ class Business extends Model
             'first_sale_on' => 'date',
             'first_employee_on' => 'date',
             'filing_confidence' => FilingConfidence::class,
+            'profile_revision' => 'integer',
         ];
     }
 
@@ -104,6 +109,18 @@ class Business extends Model
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Account, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
+    }
+
+    /** @return HasOne<RoadmapPlan, $this> */
+    public function roadmapPlan(): HasOne
+    {
+        return $this->hasOne(RoadmapPlan::class);
+    }
+
     /**
      * Deeper per-module intake answers keyed by question.
      *
@@ -112,6 +129,12 @@ class Business extends Model
     public function profileAnswers(): HasMany
     {
         return $this->hasMany(BusinessProfile::class);
+    }
+
+    /** @return HasMany<BusinessProfileVersion, $this> */
+    public function profileVersions(): HasMany
+    {
+        return $this->hasMany(BusinessProfileVersion::class);
     }
 
     /**

@@ -51,15 +51,44 @@ test('article index can be filtered by category', function () {
         ->assertSee($formationArticle->title);
 });
 
-test('article index can be filtered by status', function () {
+test('article index only exposes published articles', function () {
     $this->actingAs(User::factory()->create());
 
     $published = KnowledgeArticle::where('status', ArticleStatus::Published)->firstOrFail();
+    $draft = KnowledgeArticle::factory()->create([
+        'title' => 'Internal Draft Guidance',
+        'slug' => 'internal-draft-guidance',
+        'status' => ArticleStatus::Draft,
+    ]);
+    $needsReview = KnowledgeArticle::factory()->create([
+        'title' => 'Guidance Awaiting Review',
+        'slug' => 'guidance-awaiting-review',
+        'status' => ArticleStatus::NeedsReview,
+    ]);
 
-    $this->get(route('knowledge.articles.index', ['status' => ArticleStatus::Published->value]))
+    $this->get(route('knowledge.articles.index'))
         ->assertOk()
-        ->assertSee($published->title);
+        ->assertSee($published->title)
+        ->assertDontSee($draft->title)
+        ->assertDontSee($needsReview->title)
+        ->assertDontSee('All statuses');
 });
+
+test('non-published article details are unavailable to customers', function (ArticleStatus $status) {
+    $this->actingAs(User::factory()->create());
+
+    $article = KnowledgeArticle::factory()->create([
+        'slug' => 'private-'.$status->value,
+        'status' => $status,
+    ]);
+
+    $this->get(route('knowledge.articles.show', $article->slug))
+        ->assertNotFound();
+})->with([
+    ArticleStatus::Draft,
+    ArticleStatus::NeedsReview,
+    ArticleStatus::Archived,
+]);
 
 test('article detail renders source links and verified dates', function () {
     $this->actingAs(User::factory()->create());
@@ -115,7 +144,7 @@ test('article detail shows stale warning when review date has passed', function 
         'title' => 'Stale Test Article',
         'slug' => 'stale-test-article',
         'risk_level' => RiskLevel::Medium,
-        'status' => ArticleStatus::NeedsReview,
+        'status' => ArticleStatus::Published,
         'last_verified_at' => now()->subYear(),
         'next_review_at' => now()->subMonth(),
     ]);

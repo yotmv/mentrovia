@@ -4,12 +4,20 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Middleware\EnsureAccountIsActive;
+use App\Http\Responses\PasswordResetLinkResponse;
+use App\Models\User;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
+use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
+use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Fortify;
+use Livewire\Livewire;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -18,7 +26,15 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            FailedPasswordResetLinkRequestResponse::class,
+            fn (): PasswordResetLinkResponse => new PasswordResetLinkResponse,
+        );
+
+        $this->app->bind(
+            SuccessfulPasswordResetLinkRequestResponse::class,
+            fn (): PasswordResetLinkResponse => new PasswordResetLinkResponse,
+        );
     }
 
     /**
@@ -26,6 +42,9 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Livewire::addPersistentMiddleware(EnsureEmailIsVerified::class);
+        Livewire::addPersistentMiddleware(EnsureAccountIsActive::class);
+
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
@@ -38,6 +57,16 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $user = User::query()->where('email', (string) $request->string(Fortify::username()))->first();
+            $passwordHash = $user->password
+                ?? '$2y$12$UV/3xM4UUBbpXLyBFzpng.l1bLrWzZqrik9FQkFIc9FbJQ8C5H3Hq';
+            $passwordIsValid = Hash::check((string) $request->input('password'), $passwordHash);
+
+            return $passwordIsValid && $user?->account_erasure_started_at === null
+                ? $user
+                : null;
+        });
     }
 
     /**
@@ -69,5 +98,21 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        RateLimiter::for('fortify-sensitive', function (Request $request) {
+            $routeName = $request->route()?->getName();
+            $emailFingerprint = hash('sha256', Str::lower(trim((string) $request->input(Fortify::email()))));
+
+            return match ($routeName) {
+                'register.store' => [
+                    Limit::perMinute(3)->by('registration-minute|'.$request->ip()),
+                    Limit::perDay(10)->by('registration-day|'.$request->ip()),
+                ],
+                'password.email' => [
+                    Limit::perMinute(3)->by('password-reset-link-minute|'.$request->ip()),
+                    Limit::perHour(3)->by('password-reset-link-email|'.$emailFingerprint),
+                ],
+                default => Limit::none(),
+            };
+        });
     }
 }

@@ -103,7 +103,7 @@ test('stale high-risk article shows both stale and high-risk warnings', function
         'title' => 'Stale High Risk Article',
         'slug' => 'stale-high-risk-article',
         'risk_level' => RiskLevel::High,
-        'status' => ArticleStatus::NeedsReview,
+        'status' => ArticleStatus::Published,
         'last_verified_at' => now()->subYear(),
         'next_review_at' => now()->subMonth(),
     ]);

@@ -1,8 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:opsz,wght@14..32,100..900&display=swap');
+@import url('https://rsms.me/inter/inter.css');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap');
 @import 'tailwindcss';
 @import '../../vendor/livewire/flux/dist/flux.css';
-
-@plugin '@tailwindcss/typography';
 
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -12,8 +11,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-    --font-display: 'DM Serif Display', ui-serif, Georgia, serif;
+    --font-sans: 'InterVariable', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans--font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
 
     --color-zinc-50: #fafafa;
     --color-zinc-100: #f5f5f5;
@@ -40,6 +40,15 @@
     --color-sage: #DDEBDD;
     --color-gold: #C99A3A;
     --color-rust: #B85C38;
+
+    --color-canvas: var(--color-paper);
+    --color-surface: var(--color-white);
+    --color-foreground: var(--color-ink);
+    --color-secondary: var(--color-muted);
+    --color-action: var(--color-moss);
+    --color-support: var(--color-sage);
+    --color-wayfinding: var(--color-gold);
+    --color-risk: var(--color-rust);
 }
 
 
@@ -68,6 +77,102 @@
 
 [data-flux-label] {
     @apply  !mb-0 !leading-tight;
+}
+
+@utility prose {
+    color: var(--color-muted);
+    font-size: var(--text-base);
+    line-height: --spacing(7);
+
+    & > * + * {
+        margin-block-start: --spacing(5);
+    }
+
+    & h1,
+    & h2,
+    & h3,
+    & h4,
+    & h5,
+    & h6 {
+        color: var(--color-ink);
+        font-family: var(--font-sans);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    & h2 {
+        font-size: var(--text-2xl);
+    }
+
+    & h3 {
+        font-size: var(--text-xl);
+    }
+
+    & a {
+        color: var(--color-moss);
+        text-decoration: underline;
+        text-decoration-color: color-mix(in srgb, var(--color-moss) 40%, transparent);
+        text-underline-offset: 0.25em;
+    }
+
+    & ul,
+    & ol {
+        padding-inline-start: --spacing(6);
+    }
+
+    & ul {
+        list-style: disc;
+    }
+
+    & ol {
+        list-style: decimal;
+    }
+
+    & li + li {
+        margin-block-start: --spacing(2);
+    }
+
+    & strong {
+        color: var(--color-ink);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    & blockquote {
+        border-inline-start: 2px solid color-mix(in srgb, var(--color-moss) 50%, transparent);
+        color: var(--color-ink);
+        padding-inline-start: --spacing(4);
+    }
+
+    & pre {
+        overflow-x: auto;
+        border-radius: var(--radius-lg);
+        background: var(--color-ink);
+        color: var(--color-white);
+        padding: --spacing(4);
+    }
+
+    & code {
+        font-family: var(--font-mono);
+    }
+
+    & img {
+        border-radius: min(1vw, 12px);
+        outline: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent);
+    }
+
+    @variant dark {
+        color: var(--color-zinc-300);
+
+        & h1,
+        & h2,
+        & h3,
+        & h4,
+        & h5,
+        & h6,
+        & strong,
+        & blockquote {
+            color: var(--color-white);
+        }
+    }
 }
 
 input:focus[data-flux-control],

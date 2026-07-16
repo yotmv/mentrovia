@@ -4,12 +4,17 @@ namespace App\Services\Advertising;
 
 use App\Ai\Text\Contracts\TextRoleGenerator;
 use App\Ai\Text\TextGenerationRequest;
+use App\Enums\AccountCapability;
 use App\Enums\TextGenerationRole;
 use App\Models\AdvertisingKit;
 use App\Models\BrandKit;
 use App\Models\Business;
 use App\Models\User;
+use App\Services\Accounts\AccountMutationGate;
+use App\Services\BusinessProfileContext;
+use App\Services\BusinessProfileVersionService;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class AdvertisingKitGenerator
@@ -32,6 +37,9 @@ class AdvertisingKitGenerator
 
     public function __construct(
         protected TextRoleGenerator $generator,
+        protected AccountMutationGate $accountMutationGate,
+        protected BusinessProfileContext $profileContext,
+        protected BusinessProfileVersionService $profileVersions,
     ) {}
 
     /**
@@ -39,12 +47,11 @@ class AdvertisingKitGenerator
      */
     public function generate(User $user, Business $business): AdvertisingKit
     {
-        $business->loadMissing('profileAnswers');
-
-        $brandKit = $this->latestBrandKit($user, $business);
+        $pin = $this->pinInputs($business, $user);
+        $brandKit = $pin['brand_kit'];
 
         $context = [
-            'business' => $this->businessContext($business),
+            'business' => $pin['context'],
         ];
 
         if ($brandKit instanceof BrandKit) {
@@ -55,6 +62,7 @@ class AdvertisingKitGenerator
             TextGenerationRole::AdCopy,
             $this->prompt($brandKit),
             $context,
+            $user,
         ));
 
         $payload = $this->decodePayload($result->text);
@@ -74,18 +82,26 @@ class AdvertisingKitGenerator
             throw AdvertisingKitGenerationException::emptyKit();
         }
 
-        return AdvertisingKit::create([
-            'business_id' => $business->id,
-            'user_id' => $user->id,
-            'brand_kit_id' => $brandKit?->id,
-            'version' => $this->nextVersion($business),
-            ...$sections,
-            'provider' => $result->provider,
-            'model' => $result->model,
-            'config_version' => $result->configVersion,
-            'raw_response' => $payload,
-            'generated_at' => now(),
-        ]);
+        return DB::transaction(function () use ($business, $user, $brandKit, $sections, $result, $payload, $pin): AdvertisingKit {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
+
+            return AdvertisingKit::create([
+                'business_id' => $lockedBusiness->id,
+                'user_id' => $user->id,
+                'brand_kit_id' => $brandKit?->id,
+                'version' => $this->nextVersion($lockedBusiness),
+                'profile_revision' => $pin['revision'],
+                'profile_fingerprint' => $pin['marketing_fingerprint'],
+                'brand_content_fingerprint' => $pin['brand_fingerprint'],
+                ...$sections,
+                'provider' => $result->provider,
+                'model' => $result->model,
+                'config_version' => $result->configVersion,
+                'raw_response' => $payload,
+                'generated_at' => now(),
+            ]);
+        }, attempts: 3);
     }
 
     protected function prompt(?BrandKit $brandKit): string
@@ -106,36 +122,30 @@ class AdvertisingKitGenerator
             .'Do not invent discounts, prices, credentials, review counts, or claims the profile does not support.';
     }
 
-    protected function latestBrandKit(User $user, Business $business): ?BrandKit
-    {
-        return $business->brandKits()
-            ->whereBelongsTo($user)
-            ->orderByDesc('version')
-            ->first();
-    }
-
     /**
-     * @return array<string, mixed>
+     * @return array{revision: int, marketing_fingerprint: string, context: array<string, mixed>, brand_kit: BrandKit|null, brand_fingerprint: string|null}
      */
-    protected function businessContext(Business $business): array
+    protected function pinInputs(Business $business, User $user): array
     {
-        return [
-            'display_name' => $business->displayName(),
-            'existing_name' => $business->name,
-            'desired_name' => $business->desired_name,
-            'stage' => $business->stage?->value,
-            'legal_structure' => $business->legal_structure->value,
-            'industry' => $business->industry,
-            'city' => $business->city,
-            'county' => $business->county,
-            'state' => $business->state,
-            'location_type' => $business->location_type->value,
-            'owner_count' => $business->owner_count,
-            'employee_count' => $business->employee_count,
-            'profile_answers' => $business->profileAnswers
-                ->mapWithKeys(fn ($answer): array => [$answer->question_key => $answer->answer_value])
-                ->all(),
-        ];
+        return DB::transaction(function () use ($business, $user): array {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
+            $lockedBusiness->load('profileAnswers');
+            $version = $this->profileVersions->ensureBaselineLocked($lockedBusiness);
+            $brandKit = BrandKit::query()
+                ->whereBelongsTo($lockedBusiness)
+                ->orderByDesc('version')
+                ->lockForUpdate()
+                ->first();
+
+            return [
+                'revision' => $version->revision,
+                'marketing_fingerprint' => $this->profileContext->marketingFingerprint($lockedBusiness),
+                'context' => $this->profileContext->marketing($lockedBusiness),
+                'brand_kit' => $brandKit,
+                'brand_fingerprint' => $this->profileContext->brandContentFingerprint($brandKit),
+            ];
+        }, attempts: 3);
     }
 
     /**

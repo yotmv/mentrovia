@@ -40,10 +40,19 @@
         </div>
     @else
         @if ($generationError !== null)
-            <flux:callout variant="danger" icon="exclamation-triangle" class="mb-6">
-                <flux:callout.heading>{{ __('Generation failed') }}</flux:callout.heading>
-                <flux:callout.text>{{ $generationError }}</flux:callout.text>
-            </flux:callout>
+            <div role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" x-data x-init="$nextTick(() => $el.focus())" class="mb-6">
+                <flux:callout variant="danger" icon="exclamation-triangle">
+                    <flux:callout.heading>{{ __('Generation failed') }}</flux:callout.heading>
+                    <flux:callout.text>{{ $generationError }}</flux:callout.text>
+                    @if ($generationErrorShowsSettings)
+                        <x-slot name="actions">
+                            <flux:button size="sm" :href="route('ai.edit')" wire:navigate>
+                                {{ __('Review AI settings') }}
+                            </flux:button>
+                        </x-slot>
+                    @endif
+                </flux:callout>
+            </div>
         @endif
 
         @if ($this->kit === null)
@@ -78,6 +87,20 @@
             @endphp
 
             <div class="space-y-6" wire:loading.class="opacity-50" wire:target="generate">
+                <div class="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div>
+                        <flux:heading size="sm">{{ __('Profile freshness') }}</flux:heading>
+                        <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                            {{ match ($this->kitFreshness) {
+                                App\Enums\ProfileFreshness::Current => __('Current: This advertising kit records the current company profile and brand kit.'),
+                                App\Enums\ProfileFreshness::Stale => __('Stale: Your company profile or brand kit changed after this advertising kit was generated. Create a new version to refresh it; the saved version remains unchanged.'),
+                                App\Enums\ProfileFreshness::Unknown => __('Unknown: Input version not recorded. This legacy advertising kit cannot be compared with current inputs; create a new version to regenerate it.'),
+                            } }}
+                        </flux:text>
+                    </div>
+                    <x-profile-freshness :freshness="$this->kitFreshness" />
+                </div>
+
                 <div class="grid gap-6 lg:grid-cols-2">
                     @include('livewire.advertising.partials.angles')
                     @include('livewire.advertising.partials.google-ads')

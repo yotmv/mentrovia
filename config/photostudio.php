@@ -19,6 +19,44 @@ return [
 
     'generated_prefix' => env('PHOTOSTUDIO_GENERATED_PREFIX', 'generated_'),
 
+    'max_batch_inputs' => (int) env('PHOTOSTUDIO_MAX_BATCH_INPUTS', 12),
+
+    'lifecycle' => [
+        'queue_connection' => env('LIFECYCLE_QUEUE_CONNECTION', 'lifecycle-database'),
+        'photo_queue' => env('LIFECYCLE_PHOTO_QUEUE', 'photo-lifecycle'),
+        'security_queue' => env('LIFECYCLE_SECURITY_QUEUE', 'security-erasure'),
+        'claim_seconds' => (int) env('LIFECYCLE_CLAIM_SECONDS', 600),
+        'scheduler_heartbeat_name' => 'lifecycle-scheduler',
+        'require_scheduler_heartbeat' => (bool) env(
+            'LIFECYCLE_REQUIRE_SCHEDULER_HEARTBEAT',
+            env('APP_ENV') === 'production',
+        ),
+        'scheduler_heartbeat_max_age' => (int) env('LIFECYCLE_SCHEDULER_HEARTBEAT_MAX_AGE', 180),
+        'backlog_warning' => (int) env('LIFECYCLE_QUEUE_BACKLOG_WARNING', 1000),
+        'oldest_job_warning_seconds' => (int) env('LIFECYCLE_OLDEST_JOB_WARNING_SECONDS', 900),
+    ],
+
+    'operation_lease_seconds' => (int) env('PHOTOSTUDIO_OPERATION_LEASE_SECONDS', 600),
+
+    'account_erasure_retry_seconds' => (int) env('ACCOUNT_ERASURE_RETRY_SECONDS', 30),
+
+    'account_erasure_chunk_size' => (int) env('ACCOUNT_ERASURE_CHUNK_SIZE', 50),
+
+    'account_erasure_chunks_per_job' => (int) env('ACCOUNT_ERASURE_CHUNKS_PER_JOB', 50),
+
+    'workspace_erasure_retry_seconds' => (int) env('WORKSPACE_ERASURE_RETRY_SECONDS', 30),
+
+    'workspace_erasure_chunk_size' => (int) env('WORKSPACE_ERASURE_CHUNK_SIZE', 50),
+
+    'workspace_erasure_chunks_per_job' => (int) env('WORKSPACE_ERASURE_CHUNKS_PER_JOB', 25),
+
+    'workspace_erasure_dispatch_stale_seconds' => (int) env('WORKSPACE_ERASURE_DISPATCH_STALE_SECONDS', 600),
+
+    'reconciliation' => [
+        'limit' => (int) env('PHOTOSTUDIO_RECONCILIATION_LIMIT', 100),
+        'warning_age_seconds' => (int) env('PHOTOSTUDIO_PENDING_WARNING_AGE_SECONDS', 3600),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Generation Provider
@@ -35,6 +73,18 @@ return [
     'model' => env('PHOTOSTUDIO_MODEL'),
 
     'results_per_batch' => (int) env('PHOTOSTUDIO_RESULTS_PER_BATCH', 3),
+
+    'http' => [
+        'connect_timeout' => (int) env('PHOTOSTUDIO_HTTP_CONNECT_TIMEOUT', 10),
+        'max_output_bytes' => (int) env('PHOTOSTUDIO_MAX_OUTPUT_BYTES', 26_214_400),
+        'max_output_dimension' => (int) env('PHOTOSTUDIO_MAX_OUTPUT_DIMENSION', 8192),
+        'max_output_pixels' => (int) env('PHOTOSTUDIO_MAX_OUTPUT_PIXELS', 40_000_000),
+        'allowed_output_mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+        'replicate_output_hosts' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('REPLICATE_OUTPUT_HOSTS', 'replicate.delivery')),
+        ))),
+    ],
 
     /*
     |--------------------------------------------------------------------------

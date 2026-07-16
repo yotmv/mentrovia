@@ -31,6 +31,22 @@ test('a user can create a project and is redirected to it', function () {
         ->and($project->project_date->format('Y-m-d'))->toBe('2026-07-01');
 });
 
+test('a campaign photo brief can be carried into a new project without creating a separate relationship', function () {
+    $user = User::factory()->create();
+    $this->actingAs($user);
+
+    Livewire::test(Index::class)
+        ->set('photoBrief', 'Warm editorial product image with a clear local-business point of view.')
+        ->set('name', 'Campaign refresh')
+        ->set('projectDate', '2026-07-01')
+        ->call('createProject')
+        ->assertHasNoErrors();
+
+    $project = $user->projects()->sole();
+
+    expect($project->name)->toBe('Campaign refresh');
+});
+
 test('projects can be searched by name', function () {
     $user = User::factory()->create();
     Project::factory()->for($user, 'owner')->create(['name' => 'Kitchen remodel photos']);

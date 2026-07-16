@@ -61,7 +61,7 @@
 
         <div class="mt-6 grid gap-6 lg:grid-cols-3">
             <div class="lg:col-span-2">
-                <div class="prose prose-stone max-w-none dark:prose-invert">
+                <div class="prose max-w-[75ch]">
                     {!! $converter->convert($article->body_markdown) !!}
                 </div>
             </div>

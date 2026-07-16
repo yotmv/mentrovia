@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\KnowledgeArticle;
+use App\Services\Accounts\CurrentAccount;
 use App\Services\OwnerPayGuide;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,12 +11,12 @@ use Illuminate\View\View;
 
 class OwnerPayController extends Controller
 {
-    public function __invoke(Request $request, OwnerPayGuide $guide): View|RedirectResponse
+    public function __invoke(Request $request, OwnerPayGuide $guide, CurrentAccount $currentAccount): View|RedirectResponse
     {
-        $business = $request->user()->business;
+        $business = $currentAccount->account()->business;
 
         if ($business === null) {
-            return redirect()->route('business.intake');
+            return to_route('onboarding.welcome');
         }
 
         $advice = $guide->advise($business);
@@ -24,6 +25,7 @@ class OwnerPayController extends Controller
             'business' => $business,
             'advice' => $advice,
             'articles' => KnowledgeArticle::query()
+                ->published()
                 ->whereIn('slug', $advice->articleSlugs)
                 ->orderBy('title')
                 ->get(),

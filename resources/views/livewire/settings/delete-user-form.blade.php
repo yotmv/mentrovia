@@ -16,18 +16,23 @@
                 <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>
 
                 <flux:subheading>
-                    {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                    {{ __('Deletion immediately locks your account, then securely erases its personal data and files in the background. Security audit records required to investigate abuse are retained without plaintext credentials. Please enter your password to confirm.') }}
                 </flux:subheading>
             </div>
 
             <flux:input wire:model="password" :label="__('Password')" type="password" viewable />
+
+            <flux:error name="accountDeletion" />
 
             <div class="flex justify-end space-x-2 rtl:space-x-reverse">
                 <flux:modal.close>
                     <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
                 </flux:modal.close>
 
-                <flux:button variant="danger" type="submit">{{ __('Delete account') }}</flux:button>
+                <flux:button variant="danger" type="submit" wire:loading.attr="disabled" wire:target="deleteUser">
+                    <span wire:loading.remove wire:target="deleteUser">{{ __('Delete account') }}</span>
+                    <span wire:loading wire:target="deleteUser">{{ __('Deleting account…') }}</span>
+                </flux:button>
             </div>
         </form>
     </flux:modal>

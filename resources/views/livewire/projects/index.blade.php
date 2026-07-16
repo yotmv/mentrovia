@@ -12,6 +12,13 @@
         </flux:modal.trigger>
     </div>
 
+    @if ($photoBrief !== '')
+        <div class="border-s-2 border-s-moss bg-sage/40 p-4 dark:bg-white/5">
+            <p class="text-base font-medium text-ink sm:text-sm dark:text-white">{{ __('Creative brief ready') }}</p>
+            <p class="mt-1 max-w-[75ch] text-base/7 text-pretty text-muted dark:text-zinc-300">{{ __('Create or choose a project to carry this campaign direction into your editable generation notes.') }}</p>
+        </div>
+    @endif
+
     <flux:input type="search" wire:model.live.debounce.300ms="search" icon="magnifying-glass"
         :placeholder="__('Search projects by name or date...')" class="max-w-md" />
 
@@ -30,7 +37,7 @@
                     <div class="flex items-start justify-between gap-2">
                         <flux:heading size="lg" class="group-hover:underline">{{ $project->name }}</flux:heading>
                         @unless ($project->isOwnedBy(auth()->user()))
-                            <flux:badge size="sm" color="blue">{{ __('Shared') }}</flux:badge>
+                        <flux:badge size="sm" color="zinc">{{ __('Shared') }}</flux:badge>
                         @endunless
                     </div>
                     <flux:text class="mt-2 text-sm">
@@ -60,6 +67,10 @@
                 :placeholder="__('Storefront photo refresh')" />
 
             <flux:input type="date" wire:model="projectDate" :label="__('Date')" required />
+
+            @if ($photoBrief !== '')
+                <flux:textarea wire:model="photoBrief" :label="__('Creative brief')" rows="4" />
+            @endif
 
             <div class="flex justify-end gap-2">
                 <flux:modal.close>

@@ -2,9 +2,11 @@
 
 use App\Models\User;
 use Illuminate\Auth\Events\Verified;
+use Illuminate\Auth\Middleware\EnsureEmailIsVerified;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Laravel\Fortify\Features;
+use Livewire\Livewire;
 
 beforeEach(function () {
     $this->skipUnlessFortifyHas(Features::emailVerification());
@@ -16,6 +18,47 @@ test('email verification screen can be rendered', function () {
     $response = $this->actingAs($user)->get(route('verification.notice'));
 
     $response->assertOk();
+});
+
+test('unverified users cannot access protected product routes', function (string $routeName) {
+    $user = User::factory()->unverified()->create();
+
+    $this->actingAs($user)
+        ->get(route($routeName))
+        ->assertRedirect(route('verification.notice'));
+})->with([
+    'dashboard' => 'dashboard',
+    'advisor' => 'advisor',
+    'branding' => 'branding',
+    'advertising' => 'advertising',
+    'photo studio' => 'projects.index',
+]);
+
+test('email verification remains enforced during Livewire updates', function () {
+    $user = User::factory()->create();
+    $page = $this->actingAs($user)->get(route('branding'));
+
+    preg_match_all('/wire:snapshot="([^"]+)"/', $page->getContent(), $matches);
+
+    $snapshot = collect($matches[1] ?? [])
+        ->map(fn (string $encodedSnapshot): string => htmlspecialchars_decode($encodedSnapshot, ENT_QUOTES))
+        ->first(fn (string $encodedSnapshot): bool => data_get(json_decode($encodedSnapshot, true), 'memo.name') === 'branding.index');
+
+    expect(Livewire::getPersistentMiddleware())
+        ->toContain(EnsureEmailIsVerified::class)
+        ->and($snapshot)->not->toBeNull();
+
+    $user->markEmailAsUnverified();
+
+    $this->withHeader('X-Livewire', 'true')
+        ->postJson(Livewire::getUpdateUri(), [
+            'components' => [[
+                'snapshot' => $snapshot,
+                'calls' => [],
+                'updates' => [],
+            ]],
+        ])
+        ->assertForbidden();
 });
 
 test('email can be verified', function () {

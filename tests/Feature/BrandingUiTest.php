@@ -6,6 +6,8 @@ use App\Livewire\Branding\Index;
 use App\Models\BrandKit;
 use App\Models\Business;
 use App\Models\User;
+use App\Services\Branding\BrandKitGenerator;
+use App\Services\BusinessProfileContext;
 use Livewire\Livewire;
 
 /**
@@ -53,6 +55,32 @@ test('branding page renders the empty state before any kit exists', function () 
         ->assertSee(__('Generate brand kit'));
 });
 
+test('brand profile freshness explains current stale and unknown inputs explicitly', function () {
+    $currentBusiness = Business::factory()->create();
+    $fingerprint = app(BusinessProfileContext::class)->marketingFingerprint($currentBusiness);
+    BrandKit::factory()->forBusiness($currentBusiness)->create([
+        'marketing_context_fingerprints' => array_fill_keys(array_keys(BrandKitGenerator::Sections), $fingerprint),
+    ]);
+    Livewire::actingAs($currentBusiness->user)
+        ->test(Index::class)
+        ->assertSee('Current: This brand kit records the current company profile version.');
+
+    $staleBusiness = Business::factory()->create();
+    BrandKit::factory()->forBusiness($staleBusiness)->create([
+        'marketing_context_fingerprints' => array_fill_keys(array_keys(BrandKitGenerator::Sections), str_repeat('0', 64)),
+    ]);
+    Livewire::actingAs($staleBusiness->user)
+        ->test(Index::class)
+        ->assertSee('Stale: Your company profile changed after one or more sections were generated.');
+
+    $unknownBusiness = Business::factory()->create();
+    BrandKit::factory()->forBusiness($unknownBusiness)->create();
+    Livewire::actingAs($unknownBusiness->user)
+        ->test(Index::class)
+        ->assertSee('Unknown: Input version not recorded.')
+        ->assertSee('create a new version');
+});
+
 test('generate action persists a brand kit and shows its sections', function () {
     TextRoleManager::fake([
         TextGenerationRole::BrandCopy->value => json_encode(fakeBrandingUiPayload()),
@@ -83,7 +111,7 @@ test('a failed generation shows an error state and persists nothing', function (
     Livewire::actingAs($business->user)
         ->test(Index::class)
         ->call('generate')
-        ->assertSet('generationError', __('Brand kit generation did not return usable results. Nothing was saved. Try again in a moment.'))
+        ->assertSet('generationError', __('The AI provider did not return usable results. Retry in a moment. Nothing new was saved.'))
         ->assertSee(__('Generation failed'));
 
     expect(BrandKit::query()->count())->toBe(0);
@@ -173,7 +201,9 @@ test('the free flux kit renders the stacked layout without pro tabs', function (
     Livewire::actingAs($business->user)
         ->test(Index::class)
         ->assertSee(__('Name ideas'))
+        ->assertSee(__('Tagline options'))
         ->assertSee(__('Color palette'))
+        ->assertSee(__('Typography'))
         ->assertSee(__('Brand board prompt'))
         ->assertDontSee(__('Design system'));
 });
@@ -189,7 +219,11 @@ test('the pro flux kit renders the tabbed layout', function () {
         ->assertSee(__('Identity'))
         ->assertSee(__('Design system'))
         ->assertSee(__('Assets'))
-        ->assertSee(__('Name ideas'));
+        ->assertSee(__('Name ideas'))
+        ->assertSee(__('Tagline options'))
+        ->assertSee(__('Color palette'))
+        ->assertSee(__('Typography'))
+        ->assertSee(__('Brand board prompt'));
 });
 
 test('the palette separates dominant colors from supporting accents', function () {

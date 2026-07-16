@@ -25,7 +25,7 @@
                 </div>
             </div>
         @else
-            <div class="mb-6 flex flex-wrap gap-2">
+            <nav aria-label="{{ __('Task timeframe') }}" class="mb-6 flex gap-2 overflow-x-auto pb-1">
                 @foreach ($tabs as $tab => $label)
                     <flux:button
                         size="sm"
@@ -36,7 +36,7 @@
                         {{ __($label) }}
                     </flux:button>
                 @endforeach
-            </div>
+            </nav>
 
             @if ($tasks->isEmpty())
                 <div class="rounded-2xl p-6 ring-1 ring-ink/10 dark:ring-white/10">
@@ -55,6 +55,9 @@
                                         <flux:badge size="sm" :color="$task->completed_at ? 'green' : 'blue'">
                                             {{ $task->completed_at ? __('Complete') : __('Open') }}
                                         </flux:badge>
+                                        @if ($task->completed_at === null && $task->due_on?->isBefore(today()))
+                                            <flux:badge size="sm" color="red">{{ __('Overdue') }}</flux:badge>
+                                        @endif
                                         @if ($task->requires_professional_review)
                                             <flux:badge size="sm" color="amber">{{ __('Review') }}</flux:badge>
                                         @endif
@@ -71,7 +74,9 @@
                                 </div>
                             </div>
 
-                            <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_18rem]">
+                            <details class="mt-4 border-t border-ink/10 pt-4 dark:border-white/10">
+                                <summary class="cursor-pointer text-base font-medium text-moss sm:text-sm dark:text-sage">{{ __('Show task details') }}</summary>
+                                <div class="mt-4 grid gap-4 lg:grid-cols-[1fr_18rem]">
                                 <div>
                                     <flux:text size="sm" variant="strong">{{ __('Why it matters') }}</flux:text>
                                     <flux:text size="sm" class="mt-1">
@@ -96,7 +101,8 @@
                                         {{ __('Save') }}
                                     </flux:button>
                                 </form>
-                            </div>
+                                </div>
+                            </details>
                         </article>
                     @endforeach
                 </div>

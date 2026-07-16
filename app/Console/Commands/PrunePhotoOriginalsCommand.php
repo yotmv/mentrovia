@@ -5,10 +5,11 @@ namespace App\Console\Commands;
 use App\Enums\PhotoKind;
 use App\Enums\PhotoProcessingStatus;
 use App\Models\Photo;
+use App\Services\PhotoGenerationLifecycle;
+use App\Services\PhotoStorageCleanupService;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 
 #[Signature('photos:prune-originals
     {--days= : Override the configured retention window in days}
@@ -21,46 +22,95 @@ class PrunePhotoOriginalsCommand extends Command
      * always kept; only uploaded originals are pruned, and only after the
      * normalized LLM input exists to take over as the canonical file.
      */
-    public function handle(): int
-    {
+    public function handle(
+        PhotoGenerationLifecycle $lifecycle,
+        PhotoStorageCleanupService $cleanupService,
+    ): int {
         $days = (int) ($this->option('days') ?? config('photostudio.processing.original_retention_days', 30));
         $dryRun = (bool) $this->option('dry-run');
 
-        $candidates = Photo::query()
+        $candidateQuery = Photo::query()
             ->where('kind', PhotoKind::Uploaded)
             ->where('processing_status', PhotoProcessingStatus::Ready)
-            ->where('created_at', '<', now()->subDays($days))
-            ->get()
-            ->filter(function (Photo $photo) {
-                $llmInput = $photo->derivativePath('llm-input');
+            ->where('created_at', '<', now()->subDays($days));
 
-                return $llmInput !== null && $llmInput !== $photo->path;
-            });
+        $found = 0;
+        $pruned = 0;
 
-        if ($candidates->isEmpty()) {
+        $candidateQuery->chunkById(100, function ($photos) use (
+            $dryRun,
+            $lifecycle,
+            $cleanupService,
+            &$found,
+            &$pruned,
+        ): void {
+            foreach ($photos as $photo) {
+                $llmInputPath = $photo->derivativePath('llm-input');
+
+                if ($llmInputPath === null || $llmInputPath === $photo->path) {
+                    continue;
+                }
+
+                $found++;
+
+                if ($dryRun) {
+                    $this->line("Would prune [{$photo->path}] (photo #{$photo->id}).");
+
+                    continue;
+                }
+
+                $lease = $lifecycle->acquireForPhoto($photo, 'original-retention-prune');
+
+                if ($lease === null) {
+                    continue;
+                }
+
+                try {
+                    $cleanupIds = $lifecycle->withUsableLease(
+                        $lease,
+                        function () use ($photo, $cleanupService): ?array {
+                            $lockedPhoto = Photo::query()->lockForUpdate()->find($photo->id);
+                            $llmInputPath = $lockedPhoto?->derivativePath('llm-input');
+
+                            if ($lockedPhoto === null || $llmInputPath === null || $llmInputPath === $lockedPhoto->path) {
+                                return null;
+                            }
+
+                            $cleanupIds = $cleanupService
+                                ->recordMany($lockedPhoto->disk, [$lockedPhoto->path])
+                                ->pluck('id')
+                                ->all();
+
+                            $lockedPhoto->update(['path' => $llmInputPath]);
+
+                            return $cleanupIds;
+                        },
+                    );
+
+                    if (! is_array($cleanupIds)) {
+                        continue;
+                    }
+
+                    $cleanupService->deleteRecorded($cleanupIds);
+                } finally {
+                    $lifecycle->finish($lease);
+                }
+
+                $pruned++;
+                $this->line("Pruned [photo #{$photo->id}]; the LLM input is now its canonical file.");
+            }
+        });
+
+        if ($found === 0) {
             $this->info('No originals are due for pruning.');
 
             return self::SUCCESS;
         }
 
-        foreach ($candidates as $photo) {
-            if ($dryRun) {
-                $this->line("Would prune [{$photo->path}] (photo #{$photo->id}).");
-
-                continue;
-            }
-
-            Storage::disk($photo->disk)->delete($photo->path);
-
-            $photo->update(['path' => $photo->derivativePath('llm-input')]);
-
-            $this->line("Pruned [photo #{$photo->id}]; the LLM input is now its canonical file.");
-        }
-
         $this->info(sprintf(
             '%s %d original(s) past the %d-day retention window.',
             $dryRun ? 'Found' : 'Pruned',
-            $candidates->count(),
+            $dryRun ? $found : $pruned,
             $days,
         ));
 

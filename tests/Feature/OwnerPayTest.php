@@ -13,10 +13,10 @@ test('guests are redirected to the login page', function () {
     $this->get(route('owner-pay'))->assertRedirect(route('login'));
 });
 
-test('users without a business are redirected to the intake wizard', function () {
+test('users without a business are redirected to onboarding', function () {
     $this->actingAs(User::factory()->create());
 
-    $this->get(route('owner-pay'))->assertRedirect(route('business.intake'));
+    $this->get(route('owner-pay'))->assertRedirect(route('onboarding.welcome'));
 });
 
 test('a sole proprietor sees draws as typical and salary as unavailable', function () {
@@ -142,13 +142,13 @@ test('related knowledge articles are linked when seeded', function () {
         ->assertSee(route('knowledge.articles.show', $article->slug), escape: false);
 });
 
-test('the roadmap owner pay item links to the owner pay page', function () {
+test('the roadmap owner pay item links to the owner-pay guide', function () {
     $user = User::factory()->create();
     Business::factory()->for($user)->create();
     $this->actingAs($user);
 
     $this->get(route('roadmap'))
         ->assertOk()
-        ->assertSee('Compare your owner-pay options')
-        ->assertSee(route('owner-pay'), escape: false);
+        ->assertSee('Open the owner-pay guide')
+        ->assertSee(route('guides.show', 'owner-pay'), escape: false);
 });

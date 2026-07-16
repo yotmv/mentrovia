@@ -11,10 +11,10 @@ test('guests are redirected to the login page', function () {
     $this->get(route('roadmap'))->assertRedirect(route('login'));
 });
 
-test('users without a business are redirected to the intake wizard', function () {
+test('users without a business are redirected to onboarding', function () {
     $this->actingAs(User::factory()->create());
 
-    $this->get(route('roadmap'))->assertRedirect(route('business.intake'));
+    $this->get(route('roadmap'))->assertRedirect(route('onboarding.welcome'));
 });
 
 test('the roadmap renders every phase with items', function () {

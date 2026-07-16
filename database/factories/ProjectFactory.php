@@ -20,6 +20,7 @@ class ProjectFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'account_id' => fn (array $attributes): int => (int) User::query()->findOrFail((int) $attributes['user_id'])->current_account_id,
             'name' => fake()->company().' Shoot',
             'project_date' => fake()->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
         ];

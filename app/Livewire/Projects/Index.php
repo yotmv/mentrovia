@@ -2,9 +2,14 @@
 
 namespace App\Livewire\Projects;
 
+use App\Enums\AccountCapability;
 use App\Models\Project;
+use App\Models\User;
+use App\Services\Accounts\AccountMutationGate;
+use App\Services\Accounts\CurrentAccount;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -22,9 +27,28 @@ class Index extends Component
 
     public string $projectDate = '';
 
+    public string $photoBrief = '';
+
+    protected CurrentAccount $currentAccount;
+
+    public function boot(CurrentAccount $currentAccount): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $this->currentAccount = $currentAccount;
+        $this->currentAccount->resolve($user);
+    }
+
     public function mount(): void
     {
         $this->projectDate = now()->format('Y-m-d');
+
+        $brief = request()->query('photo_brief');
+
+        if (is_string($brief) && mb_strlen($brief) <= 2000) {
+            $this->photoBrief = $brief;
+        }
     }
 
     public function updatedSearch(): void
@@ -32,21 +56,34 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function createProject(): void
+    public function createProject(AccountMutationGate $accountMutationGate): void
     {
         $this->authorize('create', Project::class);
 
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:120'],
             'projectDate' => ['required', 'date'],
+            'photoBrief' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $project = Auth::user()->projects()->create([
-            'name' => $validated['name'],
-            'project_date' => $validated['projectDate'],
-        ]);
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
 
-        $this->redirectRoute('projects.show', $project, navigate: true);
+        $account = $this->currentAccount->account();
+        $project = DB::transaction(function () use ($accountMutationGate, $account, $user, $validated): Project {
+            $lockedAccount = $accountMutationGate->lockMemberOrFail($account->id, $user->id, AccountCapability::Project);
+
+            return $lockedAccount->projects()->create([
+                'user_id' => $user->id,
+                'name' => $validated['name'],
+                'project_date' => $validated['projectDate'],
+            ]);
+        }, attempts: 3);
+
+        $this->redirectRoute('projects.show', [
+            'project' => $project,
+            'photo_brief' => $validated['photoBrief'] ?? null,
+        ], navigate: true);
     }
 
     /**
@@ -56,7 +93,7 @@ class Index extends Component
     public function projects(): LengthAwarePaginator
     {
         return Project::query()
-            ->accessibleTo(Auth::user())
+            ->accessibleTo(Auth::user(), $this->currentAccount->account())
             ->search($this->search)
             ->withCount(['photos'])
             ->with('owner')

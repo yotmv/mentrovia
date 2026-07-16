@@ -2,17 +2,27 @@
 
 namespace App\Policies;
 
+use App\Enums\AccountCapability;
+use App\Enums\AccountRole;
+use App\Enums\ProjectPermission;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Accounts\AccountEntitlementGate;
+use App\Services\Accounts\CurrentAccount;
 
 class ProjectPolicy
 {
+    public function __construct(
+        private CurrentAccount $currentAccount,
+        private AccountEntitlementGate $entitlements,
+    ) {}
+
     /**
      * Determine whether the user can view any models.
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $this->currentAccount->resolve($user)->isMember($user);
     }
 
     /**
@@ -20,7 +30,10 @@ class ProjectPolicy
      */
     public function view(User $user, Project $project): bool
     {
-        return $project->isViewableBy($user);
+        $account = $this->currentAccount->resolve($user);
+
+        return $project->account_id === $account->id
+            || $project->sharedUsers()->whereKey($user->id)->exists();
     }
 
     /**
@@ -28,7 +41,10 @@ class ProjectPolicy
      */
     public function create(User $user): bool
     {
-        return true;
+        $account = $this->currentAccount->resolve($user);
+
+        return $account->isMember($user)
+            && $this->entitlements->allows($account, AccountCapability::Project);
     }
 
     /**
@@ -37,7 +53,12 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
-        return $project->isEditableBy($user);
+        $account = $this->currentAccount->resolve($user);
+
+        return $project->account_id === $account->id
+            || $project->sharedUsers()->whereKey($user->id)
+                ->wherePivot('permission', ProjectPermission::Write->value)
+                ->exists();
     }
 
     /**
@@ -45,7 +66,7 @@ class ProjectPolicy
      */
     public function delete(User $user, Project $project): bool
     {
-        return $project->isOwnedBy($user);
+        return $this->canManage($user, $project);
     }
 
     /**
@@ -53,6 +74,19 @@ class ProjectPolicy
      */
     public function share(User $user, Project $project): bool
     {
-        return $project->isOwnedBy($user);
+        return $this->canManage($user, $project);
+    }
+
+    public function useAi(User $user, Project $project): bool
+    {
+        return $project->account_id === $this->currentAccount->resolve($user)->id;
+    }
+
+    private function canManage(User $user, Project $project): bool
+    {
+        $account = $this->currentAccount->resolve($user);
+
+        return $project->account_id === $account->id
+            && $account->hasRole($user, AccountRole::Owner, AccountRole::Admin);
     }
 }

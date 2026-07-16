@@ -3,6 +3,7 @@
 namespace App\Concerns;
 
 use App\Enums\AnnualRevenueRange;
+use App\Enums\BusinessOnboardingTrack;
 use App\Enums\FilingConfidence;
 use App\Enums\LegalStructure;
 use App\Enums\LocationType;
@@ -68,6 +69,63 @@ trait BusinessIntakeRules
     protected function allIntakeRules(): array
     {
         return array_merge(...array_map(fn (int $step): array => $this->stepRules($step), range(1, 5)));
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    protected function intakeRulesFor(BusinessOnboardingTrack $track, int $step): array
+    {
+        if ($track === BusinessOnboardingTrack::NewCompany) {
+            return $this->stepRules($step);
+        }
+
+        return match ($step) {
+            1 => [
+                'name' => ['required', 'string', 'max:255'],
+                'desired_name' => ['nullable'],
+                'dba_status' => ['required', Rule::enum(YesNoUnsure::class)],
+                'industry' => ['required', 'string', 'max:255'],
+                'started_on' => ['nullable', 'date'],
+                'operates_in_texas' => ['required', 'in:yes'],
+                'city' => ['required', 'string', 'max:255'],
+                'county' => ['required', 'string', 'max:255'],
+                'location_type' => ['required', Rule::enum(LocationType::class)],
+                'address' => ['nullable', 'string', 'max:255'],
+                'legal_structure' => ['required', Rule::enum(LegalStructure::class)],
+            ],
+            2 => [
+                'owner_count' => ['required', 'integer', 'min:1', 'max:100'],
+                'employee_count' => ['required', 'integer', 'min:0', 'max:5000'],
+                'uses_contractors' => ['boolean'],
+                'first_employee_on' => ['nullable', 'date'],
+                'sells_taxable_goods' => ['required', Rule::enum(YesNoUnsure::class)],
+                'sells_taxable_services' => ['required', Rule::enum(YesNoUnsure::class)],
+                'has_sales_tax_permit' => ['required', Rule::enum(YesNoUnsure::class)],
+                'has_ein' => ['required', Rule::enum(YesNoUnsure::class)],
+            ],
+            3 => [
+                'annual_revenue_range' => ['required', Rule::enum(AnnualRevenueRange::class)],
+                'monthly_revenue_range' => ['required', Rule::enum(MonthlyRevenueRange::class)],
+                'first_sale_on' => ['nullable', 'date'],
+                'has_business_bank' => ['boolean'],
+                'has_bookkeeping' => ['boolean'],
+                'has_payroll' => ['boolean'],
+                'filing_confidence' => ['required', Rule::enum(FilingConfidence::class)],
+            ],
+            default => [],
+        };
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    protected function allIntakeRulesFor(BusinessOnboardingTrack $track): array
+    {
+        return array_merge(...array_map(
+            fn (int $step): array => $this->intakeRulesFor($track, $step),
+            range(1, $track->stepCount()),
+        ));
     }
 
     /**

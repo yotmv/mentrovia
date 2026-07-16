@@ -37,6 +37,7 @@ class AgentConversationMessage extends Model
     {
         return config('ai.conversations.tables.messages', parent::getTable());
     }
+
     protected static function booted(): void
     {
         static::creating(function (AgentConversationMessage $message): void {

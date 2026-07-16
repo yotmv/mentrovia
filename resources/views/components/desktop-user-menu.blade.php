@@ -17,10 +17,19 @@
                 <flux:text class="truncate">{{ auth()->user()->email }}</flux:text>
             </div>
         </div>
+        <div class="px-1 pb-2">
+            <flux:text size="sm" class="truncate">{{ auth()->user()->currentAccount?->name }}</flux:text>
+        </div>
         <flux:menu.separator />
         <flux:menu.radio.group>
             <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
                 {{ __('Settings') }}
+            </flux:menu.item>
+            <flux:menu.item :href="route('account.edit')" icon="building-office" wire:navigate>
+                {{ __('Workspace') }}
+            </flux:menu.item>
+            <flux:menu.item :href="route('feedback.create', ['page' => '/'.request()->path()])" icon="chat-bubble-left-right" wire:navigate>
+                {{ __('Send feedback') }}
             </flux:menu.item>
             <form method="POST" action="{{ route('logout') }}" class="w-full">
                 @csrf

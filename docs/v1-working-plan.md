@@ -1,5 +1,7 @@
 # Mentrovia V1 Working Plan
 
+> Historical implementation snapshot. For current feature reality, client-journey findings, and delivery order, use [Feature Audit and Delivery Roadmap](feature-audit-roadmap.md).
+
 Date: 2026-07-08
 Scope: comprehensive documentation and scan pass. No application code changes in this pass.
 

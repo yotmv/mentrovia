@@ -34,6 +34,8 @@ class BusinessTaskFactory extends Factory
             'due_on' => now()->addWeek()->toDateString(),
             'confidence' => TaskConfidence::High,
             'requires_professional_review' => false,
+            'is_active' => true,
+            'retired_at' => null,
             'completed_at' => null,
             'notes' => null,
         ];

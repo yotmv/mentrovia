@@ -12,8 +12,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $business_id
- * @property int $user_id
+ * @property int|null $user_id
  * @property int $version
+ * @property int|null $profile_revision
+ * @property string|null $profile_fingerprint
+ * @property array<string, int>|null $section_profile_revisions
+ * @property array<string, string>|null $marketing_context_fingerprints
  * @property array<int, string> $name_ideas
  * @property array<int, string> $tagline_options
  * @property string|null $positioning
@@ -33,7 +37,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'business_id', 'user_id', 'version', 'name_ideas', 'tagline_options',
+    'business_id', 'user_id', 'version', 'profile_revision', 'profile_fingerprint',
+    'section_profile_revisions', 'marketing_context_fingerprints', 'name_ideas', 'tagline_options',
     'positioning', 'tone_voice', 'color_palette', 'font_notes',
     'image_prompts', 'brand_board_prompt', 'social_bios', 'preferences', 'provider', 'model', 'config_version',
     'raw_response', 'generated_at',
@@ -54,6 +59,9 @@ class BrandKit extends Model
     {
         return [
             'version' => 'integer',
+            'profile_revision' => 'integer',
+            'section_profile_revisions' => 'array',
+            'marketing_context_fingerprints' => 'array',
             'name_ideas' => 'array',
             'tagline_options' => 'array',
             'tone_voice' => 'array',

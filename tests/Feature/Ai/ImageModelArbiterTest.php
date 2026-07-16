@@ -4,11 +4,17 @@ namespace Tests\Feature\Ai;
 
 use App\Ai\Images\ImageModelChooser;
 use App\Ai\Images\ImageRequirements;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Log;
 use Laravel\Ai\StructuredAnonymousAgent;
+use RuntimeException;
 use Tests\TestCase;
 
 class ImageModelArbiterTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -34,7 +40,7 @@ class ImageModelArbiterTest extends TestCase
             'reason' => 'Cheap editing king, then a different family.',
         ]]);
 
-        $selected = app(ImageModelChooser::class)->chooseMany($this->requirements(), 3);
+        $selected = app(ImageModelChooser::class)->chooseMany($this->requirements(), 3, User::factory()->create());
 
         $this->assertSame(
             'openrouter::google/gemini-2.5-flash-image',
@@ -54,11 +60,12 @@ class ImageModelArbiterTest extends TestCase
             'reason' => 'Confidently wrong.',
         ]]);
 
-        $withArbiter = app(ImageModelChooser::class)->chooseMany($this->requirements(), 3);
+        $user = User::factory()->create();
+        $withArbiter = app(ImageModelChooser::class)->chooseMany($this->requirements(), 3, $user);
 
         config(['photostudio.chooser.llm.enabled' => false]);
 
-        $heuristic = app(ImageModelChooser::class)->chooseMany($this->requirements(), 3);
+        $heuristic = app(ImageModelChooser::class)->chooseMany($this->requirements(), 3, $user);
 
         $this->assertSame(
             $heuristic->map(fn ($candidate) => $candidate->choiceId())->all(),
@@ -74,9 +81,10 @@ class ImageModelArbiterTest extends TestCase
         ]]);
 
         $chooser = app(ImageModelChooser::class);
+        $user = User::factory()->create();
 
-        $first = $chooser->chooseMany($this->requirements(), 3);
-        $second = $chooser->chooseMany($this->requirements(), 3);
+        $first = $chooser->chooseMany($this->requirements(), 3, $user);
+        $second = $chooser->chooseMany($this->requirements(), 3, $user);
 
         // A second LLM call would consume an undefined fake response and fall
         // back to heuristic order, so identical output proves the cache hit.
@@ -90,7 +98,7 @@ class ImageModelArbiterTest extends TestCase
 
         StructuredAnonymousAgent::fake();
 
-        app(ImageModelChooser::class)->chooseMany($this->requirements(), 3);
+        app(ImageModelChooser::class)->chooseMany($this->requirements(), 3, User::factory()->create());
 
         StructuredAnonymousAgent::assertNeverPrompted();
     }
@@ -104,7 +112,32 @@ class ImageModelArbiterTest extends TestCase
 
         StructuredAnonymousAgent::fake();
 
-        app(ImageModelChooser::class)->chooseMany($this->requirements(), 3);
+        app(ImageModelChooser::class)->chooseMany($this->requirements(), 3, User::factory()->create());
+
+        StructuredAnonymousAgent::assertNeverPrompted();
+    }
+
+    public function test_arbiter_failures_do_not_log_provider_response_content(): void
+    {
+        Log::spy();
+        StructuredAnonymousAgent::fake(function (): never {
+            throw new RuntimeException('private provider response content');
+        });
+
+        app(ImageModelChooser::class)->chooseMany($this->requirements(), 3, User::factory()->create());
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with('Image model arbiter failed; falling back to heuristic ranking.', [
+                'exception_class' => RuntimeException::class,
+            ]);
+    }
+
+    public function test_accountless_chooser_command_never_invokes_paid_arbitration(): void
+    {
+        StructuredAnonymousAgent::fake();
+
+        $this->artisan('photos:image-chooser')->assertSuccessful();
 
         StructuredAnonymousAgent::assertNeverPrompted();
     }
