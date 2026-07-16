@@ -2,25 +2,44 @@
 
 namespace App\Livewire\Advertising;
 
-use App\Ai\Text\Exceptions\TextGenerationRoleException;
+use App\Enums\ProfileFreshness;
 use App\Models\AdvertisingKit;
 use App\Models\BrandKit;
 use App\Models\Business;
 use App\Models\User;
-use App\Services\Advertising\AdvertisingKitGenerationException;
+use App\Services\Accounts\CurrentAccount;
 use App\Services\Advertising\AdvertisingKitGenerator;
+use App\Services\ProfileFreshnessService;
+use App\Support\Ai\AiFailurePresentation;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Throwable;
 
 class Index extends Component
 {
     public ?int $selectedKitId = null;
 
     public ?string $generationError = null;
+
+    public bool $generationErrorShowsSettings = false;
+
+    protected CurrentAccount $currentAccount;
+
+    protected ProfileFreshnessService $profileFreshness;
+
+    public function boot(CurrentAccount $currentAccount, ProfileFreshnessService $profileFreshness): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $this->currentAccount = $currentAccount;
+        $this->profileFreshness = $profileFreshness;
+        $this->currentAccount->resolve($user);
+    }
 
     public function generate(AdvertisingKitGenerator $generator): void
     {
@@ -31,12 +50,17 @@ class Index extends Component
             return;
         }
 
+        $this->authorize('operate', $business);
+
         $this->generationError = null;
+        $this->generationErrorShowsSettings = false;
 
         try {
             $kit = $generator->generate($user, $business);
-        } catch (AdvertisingKitGenerationException|TextGenerationRoleException) {
-            $this->generationError = __('Advertising generation did not return usable results. Nothing was saved. Try again in a moment.');
+        } catch (Throwable $exception) {
+            $failure = AiFailurePresentation::fromException($exception);
+            $this->generationError = $failure->message;
+            $this->generationErrorShowsSettings = $failure->showsSettingsAction;
 
             return;
         }
@@ -52,7 +76,7 @@ class Index extends Component
     {
         $user = Auth::user();
 
-        return $user instanceof User ? $user->business()->first() : null;
+        return $user instanceof User ? $this->currentAccount->account()->business : null;
     }
 
     /**
@@ -68,7 +92,6 @@ class Index extends Component
         }
 
         return $business->brandKits()
-            ->where('user_id', Auth::id())
             ->orderByDesc('version')
             ->first();
     }
@@ -89,7 +112,6 @@ class Index extends Component
 
         return $business->advertisingKits()
             ->with('brandKit')
-            ->where('user_id', Auth::id())
             ->orderByDesc('version')
             ->get();
     }
@@ -106,6 +128,17 @@ class Index extends Component
         }
 
         return $this->kits()->first();
+    }
+
+    #[Computed]
+    public function kitFreshness(): ?ProfileFreshness
+    {
+        $kit = $this->kit();
+        $business = $this->business();
+
+        return $kit instanceof AdvertisingKit && $business instanceof Business
+            ? $this->profileFreshness->advertising($kit, $business, $this->brandKit())
+            : null;
     }
 
     public function render(): View

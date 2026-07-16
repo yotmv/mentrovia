@@ -4,8 +4,8 @@ namespace App\Services\Advisor;
 
 use App\Ai\Text\Contracts\TextRoleGenerator;
 use App\Ai\Text\TextGenerationRequest;
+use App\Enums\AccountCapability;
 use App\Enums\ArticleCategory;
-use App\Enums\ArticleStatus;
 use App\Enums\FreshnessStatus;
 use App\Enums\LegalStructure;
 use App\Enums\RiskLevel;
@@ -17,10 +17,15 @@ use App\Models\AgentConversationMessage;
 use App\Models\Business;
 use App\Models\KnowledgeArticle;
 use App\Models\User;
+use App\Services\Accounts\AccountMutationGate;
+use App\Services\Accounts\CurrentAccount;
+use App\Services\BusinessProfileContext;
+use App\Services\BusinessProfileVersionService;
 use App\Services\ComplianceValidation\ValidationPipeline;
 use App\Services\ComplianceValidation\ValidationPipelineResult;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class AdvisorAnswerService
@@ -28,18 +33,21 @@ class AdvisorAnswerService
     public function __construct(
         protected TextRoleGenerator $generator,
         protected ValidationPipeline $validation,
+        protected CurrentAccount $currentAccount,
+        protected AccountMutationGate $accountMutationGate,
+        protected BusinessProfileContext $profileContext,
+        protected BusinessProfileVersionService $profileVersions,
     ) {}
 
     public function answer(User $user, Business $business, string $question): AgentConversationMessage
     {
-        $business->loadMissing('profileAnswers');
+        $account = $this->currentAccount->resolve($user);
+        abort_unless($business->account_id === $account->id, 403);
+        $pin = $this->pinProfile($business, $user);
+        $business = $pin['business'];
 
         $conversation = $this->conversationFor($user);
         $question = trim($question);
-
-        $this->storeMessage($conversation, $user, 'user', $question, [
-            'business_id' => $business->id,
-        ]);
 
         $articles = $this->relevantArticles($question);
         if ($articles->isEmpty()) {
@@ -47,28 +55,61 @@ class AdvisorAnswerService
         } elseif ($followUp = $this->requiredFollowUpQuestion($business, $question, $articles)) {
             $answer = $this->followUpAnswer($articles, $followUp);
         } else {
-            $validationResults = $this->validationResults($articles, $user, $business, $question);
-            $answer = $this->generateAnswer($conversation, $business, $question, $articles, $validationResults);
+            $validationResults = $this->validationResults(
+                $articles,
+                $user,
+                $business,
+                $question,
+                $pin['context'],
+                ['revision' => $pin['revision'], 'fingerprint' => $pin['fingerprint']],
+            );
+            $answer = $this->generateAnswer($user, $conversation, $business, $question, $articles, $validationResults, $pin['context']);
         }
 
-        $conversation->touch();
+        return DB::transaction(function () use ($conversation, $user, $question, $business, $answer, $pin): AgentConversationMessage {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedConversation = AgentConversation::query()
+                ->where('account_id', $business->account_id)
+                ->lockForUpdate()
+                ->findOrFail($conversation->id);
 
-        return $this->storeMessage($conversation, $user, 'assistant', $answer['direct_answer'], [
-            'answer' => $answer,
-        ]);
+            $this->storeMessage($lockedConversation, $user, 'user', $question, [
+                'business_id' => $business->id,
+            ]);
+
+            $message = $this->storeMessage($lockedConversation, $user, 'assistant', $answer['direct_answer'], [
+                'answer' => $answer,
+                'question' => $question,
+                'profile_context' => [
+                    'revision' => $pin['revision'],
+                    'fingerprint' => $pin['fingerprint'],
+                ],
+            ]);
+
+            $lockedConversation->touch();
+
+            return $message;
+        });
     }
 
     public function conversationFor(User $user): AgentConversation
     {
-        return AgentConversation::query()
-            ->whereBelongsTo($user)
-            ->where('title', 'Advisor Q&A')
-            ->latest('updated_at')
-            ->first()
-            ?? AgentConversation::create([
-                'user_id' => $user->id,
-                'title' => 'Advisor Q&A',
-            ]);
+        $account = $this->currentAccount->resolve($user);
+
+        return DB::transaction(function () use ($user, $account): AgentConversation {
+            $account = $this->accountMutationGate->lockMemberOrFail($account->id, $user->id, AccountCapability::Workspace);
+
+            return AgentConversation::query()
+                ->whereBelongsTo($account)
+                ->where('title', 'Advisor Q&A')
+                ->latest('updated_at')
+                ->first()
+                ?? AgentConversation::create([
+                    'user_id' => $user->id,
+                    'account_id' => $account->id,
+                    'title' => 'Advisor Q&A',
+                ]);
+        }, attempts: 3);
     }
 
     /**
@@ -79,7 +120,7 @@ class AdvisorAnswerService
         $tokens = $this->tokens($question);
 
         $ranked = KnowledgeArticle::query()
-            ->where('status', '!=', ArticleStatus::Archived->value)
+            ->published()
             ->get()
             ->map(fn (KnowledgeArticle $article): array => [
                 'article' => $article,
@@ -93,6 +134,7 @@ class AdvisorAnswerService
         $ids = $ranked->pluck('article.id')->values();
 
         return KnowledgeArticle::query()
+            ->published()
             ->with('sources')
             ->whereKey($ids)
             ->get()
@@ -106,13 +148,28 @@ class AdvisorAnswerService
 
     /**
      * @param  Collection<int, KnowledgeArticle>  $articles
+     * @param  array<string, mixed>  $profileContext
+     * @param  array{revision: int, fingerprint: string}  $profileBinding
      * @return array<int, ValidationPipelineResult>
      */
-    protected function validationResults(Collection $articles, User $user, Business $business, string $question): array
-    {
+    protected function validationResults(
+        Collection $articles,
+        User $user,
+        Business $business,
+        string $question,
+        array $profileContext,
+        array $profileBinding,
+    ): array {
         return $articles
             ->filter(fn (KnowledgeArticle $article): bool => $this->needsValidation($article))
-            ->map(fn (KnowledgeArticle $article): ValidationPipelineResult => $this->validation->validate($article, $user, $business, $question))
+            ->map(fn (KnowledgeArticle $article): ValidationPipelineResult => $this->validation->validate(
+                $article,
+                $user,
+                $business,
+                $question,
+                $profileContext,
+                $profileBinding,
+            ))
             ->values()
             ->all();
     }
@@ -129,25 +186,29 @@ class AdvisorAnswerService
     /**
      * @param  Collection<int, KnowledgeArticle>  $articles
      * @param  array<int, ValidationPipelineResult>  $validationResults
+     * @param  array<string, mixed>  $profileContext
      * @return array<string, mixed>
      */
     protected function generateAnswer(
+        User $user,
         AgentConversation $conversation,
         Business $business,
         string $question,
         Collection $articles,
         array $validationResults,
+        array $profileContext,
     ): array {
         $result = $this->generator->generate(TextGenerationRequest::make(
             TextGenerationRole::AdvisorAnswer,
             $this->answerPrompt(),
             [
                 'question' => $question,
-                'business' => $this->businessContext($business),
+                'business' => $profileContext,
                 'knowledge' => $articles->map(fn (KnowledgeArticle $article): array => $this->articleContext($article))->all(),
                 'validation' => $this->validationContext($validationResults),
                 'recent_history' => $this->recentHistory($conversation),
             ],
+            $user,
         ));
 
         $payload = $this->decodePayload($result->text);
@@ -237,30 +298,23 @@ class AdvisorAnswerService
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{business: Business, revision: int, fingerprint: string, context: array<string, mixed>}
      */
-    protected function businessContext(Business $business): array
+    protected function pinProfile(Business $business, User $user): array
     {
-        return [
-            'id' => $business->id,
-            'display_name' => $business->displayName(),
-            'stage' => $business->stage?->value,
-            'legal_structure' => $business->legal_structure->value,
-            'tax_classification' => $business->tax_classification,
-            'industry' => $business->industry,
-            'city' => $business->city,
-            'county' => $business->county,
-            'state' => $business->state,
-            'employee_count' => $business->employee_count,
-            'uses_contractors' => $business->uses_contractors,
-            'sells_taxable_goods' => $business->sells_taxable_goods->value,
-            'sells_taxable_services' => $business->sells_taxable_services->value,
-            'has_sales_tax_permit' => $business->has_sales_tax_permit->value,
-            'has_payroll' => $business->has_payroll,
-            'profile_answers' => $business->profileAnswers
-                ->mapWithKeys(fn ($answer): array => [$answer->question_key => $answer->answer_value])
-                ->all(),
-        ];
+        return DB::transaction(function () use ($business, $user): array {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
+            $lockedBusiness->load('profileAnswers');
+            $version = $this->profileVersions->ensureBaselineLocked($lockedBusiness);
+
+            return [
+                'business' => $lockedBusiness,
+                'revision' => $version->revision,
+                'fingerprint' => $version->fingerprint,
+                'context' => $this->profileContext->advisor($lockedBusiness),
+            ];
+        }, attempts: 3);
     }
 
     /**

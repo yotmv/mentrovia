@@ -1,6 +1,7 @@
 <?php
 
 use App\Ai\Text\TextRoleManager;
+use App\Enums\AccountRole;
 use App\Enums\RiskLevel;
 use App\Enums\TextGenerationRole;
 use App\Enums\ValidationDecision;
@@ -8,8 +9,10 @@ use App\Enums\ValidationRunStatus;
 use App\Models\Business;
 use App\Models\KnowledgeArticle;
 use App\Models\KnowledgeSource;
+use App\Models\User;
 use App\Models\ValidationVote;
 use App\Services\ComplianceValidation\ValidationPipeline;
+use Illuminate\Support\Facades\Log;
 
 test('validation pipeline approves current sourced guidance and stores all votes', function () {
     $business = Business::factory()->create([
@@ -38,12 +41,29 @@ test('validation pipeline approves current sourced guidance and stores all votes
         ->and($result->run->votes)->toHaveCount(4)
         ->and($result->run->votes->pluck('model_role')->all())->toContain(TextGenerationRole::FinalJudge)
         ->and($result->run->normalized_request['article'])->toHaveKey('slug', $article->slug)
-        ->and($result->run->context_snapshot['business'])->toHaveKey('state', 'TX');
+        ->and($result->run->context_snapshot['business_summary'])->toHaveKey('state', 'TX')
+        ->and($result->run->context_snapshot)->not->toHaveKeys(['business_profile', 'profile_answers']);
 
     $fake->assertGenerated(TextGenerationRole::ValidatorFactual)
         ->assertGenerated(TextGenerationRole::ValidatorContradiction)
         ->assertGenerated(TextGenerationRole::ValidatorUserFit)
         ->assertGenerated(TextGenerationRole::FinalJudge);
+});
+
+test('business validation runs are attributed to the explicit member who triggered them', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $account = $owner->currentAccount;
+    $account->members()->attach($member, ['role' => AccountRole::Member]);
+    $member->forceFill(['current_account_id' => $account->id])->save();
+    $business = Business::factory()->for($owner)->create();
+    $article = sourcedArticle();
+    TextRoleManager::fake(approvedResponses())->preventStrayPrompts();
+
+    $result = app(ValidationPipeline::class)->validate($article, user: $member, business: $business);
+
+    expect($result->run->user_id)->toBe($member->id)
+        ->and($result->run->user_id)->not->toBe($owner->id);
 });
 
 test('validation pipeline returns caveats when reviewers or guardrails require caveats', function () {
@@ -120,6 +140,8 @@ test('guardrails catch unsupported threshold and deadline language', function ()
 });
 
 test('pipeline failures are stored as admin review required', function () {
+    Log::spy();
+
     $article = sourcedArticle([
         'body_markdown' => compliantBody('Keep routine bookkeeping records.'),
         'risk_level' => RiskLevel::Low,
@@ -136,6 +158,13 @@ test('pipeline failures are stored as admin review required', function () {
         ->and($result->run->aggregate_decision)->toBe(ValidationDecision::AdminReviewRequired)
         ->and($result->run->flags)->toContain('pipeline_error')
         ->and(ValidationVote::whereBelongsTo($result->run, 'validationRun')->count())->toBe(1);
+
+    Log::shouldHaveReceived('error')
+        ->once()
+        ->with('Compliance validation pipeline failed.', [
+            'validation_run_id' => $result->run->id,
+            'exception_class' => RuntimeException::class,
+        ]);
 });
 
 function sourcedArticle(array $attributes = []): KnowledgeArticle

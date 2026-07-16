@@ -3,6 +3,7 @@
 namespace App\Ai\Gateway;
 
 use App\Ai\Images\Exceptions\ImageGenerationRejectedException;
+use App\Ai\Images\GeneratedImageResponseValidator;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -13,7 +14,6 @@ use Laravel\Ai\Files\Base64Image;
 use Laravel\Ai\Files\Image;
 use Laravel\Ai\Files\StoredImage;
 use Laravel\Ai\Gateway\Concerns\HandlesFailoverErrors;
-use Laravel\Ai\Responses\Data\GeneratedImage;
 use Laravel\Ai\Responses\Data\Meta;
 use Laravel\Ai\Responses\Data\Usage;
 use Laravel\Ai\Responses\ImageResponse;
@@ -67,10 +67,7 @@ class StabilityImageGateway implements ImageGateway
         }
 
         return new ImageResponse(
-            collect([new GeneratedImage(
-                base64_encode($response->body()),
-                explode(';', $response->header('Content-Type') ?: 'image/png')[0],
-            )]),
+            collect([GeneratedImageResponseValidator::fromResponse($response)]),
             new Usage(0, 0),
             new Meta($provider->name(), $model),
         );
@@ -137,8 +134,8 @@ class StabilityImageGateway implements ImageGateway
     }
 
     /**
-     * Map validation / moderation failures to a typed exception, logging
-     * the prompt so rejected generations can be audited.
+     * Map validation / moderation failures to a typed exception without
+     * retaining prompt or provider response content in application logs.
      */
     protected function rejectIfInvalid(ImageProvider $provider, string $prompt, RequestException $e): void
     {
@@ -147,14 +144,12 @@ class StabilityImageGateway implements ImageGateway
         if (in_array($status, [400, 403, 422], true)) {
             Log::warning('Stability rejected an image generation request.', [
                 'status' => $status,
-                'prompt' => $prompt,
-                'detail' => $e->response->json('errors', $e->response->body()),
+                'prompt_sha256' => hash('sha256', $prompt),
+                'prompt_bytes' => strlen($prompt),
             ]);
 
             throw ImageGenerationRejectedException::forProvider(
                 $provider->name(),
-                (string) json_encode($e->response->json('errors', ['validation failed'])),
-                $e,
             );
         }
     }
@@ -165,11 +160,20 @@ class StabilityImageGateway implements ImageGateway
     protected function client(ImageProvider $provider, int $timeout): PendingRequest
     {
         $config = $provider->additionalConfiguration();
+        $baseUrl = GeneratedImageResponseValidator::requireHttpsApiUrl(
+            (string) ($config['url'] ?? 'https://api.stability.ai/v2beta'),
+            'Stability',
+        );
 
-        return Http::baseUrl(rtrim($config['url'] ?? 'https://api.stability.ai/v2beta', '/'))
+        return Http::baseUrl($baseUrl)
             ->withToken($provider->providerCredentials()['key'])
             ->withHeaders(['Accept' => 'image/*'])
+            ->connectTimeout((int) config('photostudio.http.connect_timeout', 10))
             ->timeout($timeout)
+            ->withOptions([
+                'allow_redirects' => false,
+                ...GeneratedImageResponseValidator::httpOptions(),
+            ])
             ->throw();
     }
 }

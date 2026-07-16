@@ -20,6 +20,9 @@
                 >
                     <span x-text="copied ? '{{ __('Copied') }}' : '{{ __('Copy') }}'">{{ __('Copy') }}</span>
                 </flux:button>
+                <flux:button size="sm" variant="ghost" icon="photo" :href="route('projects.index', ['photo_brief' => $prompt])" wire:navigate>
+                    {{ __('Use in Photo Studio') }}
+                </flux:button>
             </div>
         @endforeach
     </div>

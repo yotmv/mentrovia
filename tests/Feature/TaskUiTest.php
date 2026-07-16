@@ -78,6 +78,16 @@ test('users can complete and uncomplete tasks with notes', function () {
 
     expect($task->refresh()->completed_at)->toBeNull()
         ->and($task->notes)->toBe('Still open.');
+
+    $this->actingAs($user)
+        ->patch(route('tasks.update', $task), [
+            'completed' => '1',
+            'notes' => 'Completed again.',
+        ])
+        ->assertRedirect();
+
+    expect($task->completions()->count())->toBe(1)
+        ->and($task->completions()->sole()->notes)->toBe('Reconciled and reviewed.');
 });
 
 test('users cannot update another users task', function () {
@@ -95,13 +105,18 @@ test('users cannot update another users task', function () {
         ->assertForbidden();
 });
 
-test('dashboard shows upcoming incomplete tasks', function () {
+test('dashboard shows overdue tasks before upcoming incomplete tasks', function () {
     $user = User::factory()->create();
     $business = Business::factory()->for($user)->create(['name' => 'Bluebonnet Lawn Care']);
 
     BusinessTask::factory()->for($business)->create([
         'title' => 'Open upcoming task',
         'due_on' => now()->addDay(),
+        'completed_at' => null,
+    ]);
+    BusinessTask::factory()->for($business)->create([
+        'title' => 'Open overdue task',
+        'due_on' => now()->subDay(),
         'completed_at' => null,
     ]);
     BusinessTask::factory()->for($business)->create([
@@ -113,7 +128,39 @@ test('dashboard shows upcoming incomplete tasks', function () {
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Upcoming tasks')
-        ->assertSee('Open upcoming task')
+        ->assertSee('Due and upcoming tasks')
+        ->assertSee('Overdue')
+        ->assertSeeInOrder(['Open overdue task', 'Open upcoming task'])
         ->assertDontSee('Completed future task');
 });
+
+test('task periods include incomplete overdue work once alongside current tasks', function (string $period) {
+    $user = User::factory()->create();
+    $business = Business::factory()->for($user)->create();
+
+    BusinessTask::factory()->for($business)->create([
+        'title' => 'Incomplete overdue task',
+        'due_on' => now()->subWeek(),
+        'completed_at' => null,
+    ]);
+    BusinessTask::factory()->for($business)->create([
+        'title' => 'Current week task',
+        'due_on' => now(),
+        'completed_at' => null,
+    ]);
+    BusinessTask::factory()->for($business)->create([
+        'title' => 'Completed overdue task',
+        'due_on' => now()->subYear(),
+        'completed_at' => now(),
+    ]);
+
+    $response = $this->actingAs($user)
+        ->get(route('tasks.index', ['period' => $period]))
+        ->assertOk()
+        ->assertSee('Incomplete overdue task')
+        ->assertSee('Current week task')
+        ->assertSee('Overdue')
+        ->assertDontSee('Completed overdue task');
+
+    expect(substr_count($response->getContent(), 'Incomplete overdue task'))->toBe(1);
+})->with(['week', 'month', 'quarter', 'year']);

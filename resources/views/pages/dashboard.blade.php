@@ -1,4 +1,4 @@
-<x-layouts::app :title="__('Dashboard')">
+<x-layouts::app :title="__('Today')">
     <section class="w-full @container">
         @if ($business === null)
             <div class="mx-auto flex min-h-[32rem] max-w-2xl items-center">
@@ -14,14 +14,44 @@
         @else
             <div class="flex flex-wrap items-end justify-between gap-5 border-b border-ink/10 pb-6 dark:border-white/10">
                 <div>
-                    <p class="font-mono text-sm font-medium tracking-wide text-moss dark:text-sage">{{ __('Business workspace') }}</p>
-                    <h1 class="mt-3 font-display text-4xl tracking-tight text-balance text-ink dark:text-white sm:text-5xl">{{ $business->displayName() }}</h1>
+                    <p class="font-mono text-base font-medium tracking-wide text-moss sm:text-sm dark:text-sage">{{ __('Today') }}</p>
+                    <h1 class="mt-3 font-display text-4xl tracking-tight text-balance text-ink dark:text-white sm:text-5xl">{{ __('Keep :name moving.', ['name' => $business->displayName()]) }}</h1>
                     <p class="mt-2 text-base/7 text-pretty text-muted dark:text-zinc-300">{{ $business->stage?->label() }} · {{ $business->city }}, {{ $business->county }} {{ __('County') }}, TX</p>
                 </div>
-                <flux:button variant="ghost" size="sm" :href="route('business.intake')" wire:navigate icon="pencil-square">
+                <flux:button variant="ghost" size="sm" :href="route('business.overview')" wire:navigate icon="building-storefront">
                     {{ __('Edit profile') }}
                 </flux:button>
             </div>
+
+            @if ($nextActions->isNotEmpty())
+                @php($nextAction = $nextActions->first())
+                @php($nextActionTemplate = $roadmapTemplates->get($nextAction->template_key))
+                <section class="mt-6 rounded-3xl bg-ink p-6 text-white dark:bg-zinc-900 sm:p-8">
+                    <div class="flex flex-wrap items-end justify-between gap-6">
+                        <div class="max-w-[60ch]">
+                            <p class="font-mono text-base font-medium tracking-wide text-gold sm:text-sm">{{ __('Do this next') }}</p>
+                            <h2 class="mt-3 font-display text-4xl tracking-tight text-balance">{{ $nextActionTemplate?->title ?? $nextAction->title }}</h2>
+                            <p class="mt-3 text-base/7 text-pretty text-white/70">{{ $nextActionTemplate?->whyItMatters ?? $nextAction->why_it_matters }}</p>
+                            <p class="mt-3 text-sm text-white/70">
+                                {{ $nextAction->assignee?->name ?? __('Unassigned') }}
+                                @if ($nextAction->due_on !== null) · {{ __('Planning target :date', ['date' => $nextAction->due_on->format('M j, Y')]) }} @endif
+                            </p>
+                        </div>
+                        @if ($nextActionTemplate?->href !== null)
+                            <flux:button variant="primary" :href="$nextActionTemplate->href" wire:navigate icon="arrow-right">{{ $nextActionTemplate->hrefLabel ?? __('Open the module') }}</flux:button>
+                        @else
+                            <div class="flex flex-wrap gap-2">
+                                <flux:button variant="primary" :href="route('tasks.index')" wire:navigate icon="check-circle" :aria-label="__('Open Tasks for :action', ['action' => $nextActionTemplate?->title ?? $nextAction->title])">
+                                    {{ __('Open Tasks') }}
+                                </flux:button>
+                                <flux:button variant="ghost" :href="route('advisor')" wire:navigate :aria-label="__('Ask Advisor about :action', ['action' => $nextActionTemplate?->title ?? $nextAction->title])">
+                                    {{ __('Ask Advisor') }}
+                                </flux:button>
+                            </div>
+                        @endif
+                    </div>
+                </section>
+            @endif
 
             <div class="mt-6 grid gap-5 @4xl:grid-cols-[11fr_13fr]">
                 <div class="rounded-3xl bg-white p-5 ring-1 ring-ink/10 dark:bg-zinc-900 dark:ring-white/10 sm:p-6">
@@ -60,11 +90,18 @@
                     </div>
                     <ol role="list" class="mt-6 grid gap-4 @md:grid-cols-3">
                         @forelse ($nextActions->take(3) as $item)
+                            @php($template = $roadmapTemplates->get($item->template_key))
                             <li class="border-t border-ink/10 pt-4 dark:border-white/10">
                                 <p class="text-sm font-medium text-moss dark:text-sage">{{ $item->priority->label() }}</p>
-                                <p class="mt-2 text-base/7 font-medium text-ink dark:text-white">{{ $item->title }}</p>
-                                @if ($item->href !== null)
-                                    <a href="{{ $item->href }}" wire:navigate class="mt-3 text-sm font-medium text-muted hover:text-moss dark:text-zinc-400 dark:hover:text-sage">{{ $item->hrefLabel ?? __('Open the guide') }}</a>
+                                <p class="mt-2 text-base/7 font-medium text-ink dark:text-white">{{ $template?->title ?? $item->title }}</p>
+                                <p class="mt-1 text-sm text-muted dark:text-zinc-400">{{ $item->assignee?->name ?? __('Unassigned') }} · {{ $item->due_on?->format('M j') ?? __('No target') }}</p>
+                                @if ($template?->href !== null)
+                                    <a href="{{ $template->href }}" wire:navigate class="mt-3 text-sm font-medium text-muted hover:text-moss dark:text-zinc-400 dark:hover:text-sage">{{ $template->hrefLabel ?? __('Open the module') }}</a>
+                                @else
+                                    <div class="mt-3 flex flex-wrap gap-3">
+                                        <a href="{{ route('tasks.index') }}" wire:navigate aria-label="{{ __('Open Tasks for :action', ['action' => $template?->title ?? $item->title]) }}" class="text-sm font-medium text-muted hover:text-moss dark:text-zinc-400 dark:hover:text-sage">{{ __('Open Tasks') }}</a>
+                                        <a href="{{ route('advisor') }}" wire:navigate aria-label="{{ __('Ask Advisor about :action', ['action' => $template?->title ?? $item->title]) }}" class="text-sm font-medium text-muted hover:text-moss dark:text-zinc-400 dark:hover:text-sage">{{ __('Ask Advisor') }}</a>
+                                    </div>
                                 @endif
                             </li>
                         @empty
@@ -103,20 +140,25 @@
                 <div class="rounded-3xl bg-white p-5 ring-1 ring-ink/10 dark:bg-zinc-900 dark:ring-white/10 sm:p-6">
                     <div class="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                            <p class="text-sm font-medium text-muted dark:text-zinc-400">{{ __('Upcoming tasks') }}</p>
+                            <p class="text-sm font-medium text-muted dark:text-zinc-400">{{ __('Due and upcoming tasks') }}</p>
                             <h2 class="mt-2 font-display text-3xl tracking-tight text-ink dark:text-white">{{ __('Keep your operating rhythm.') }}</h2>
                         </div>
                         <a href="{{ route('tasks.index') }}" wire:navigate class="text-sm font-medium text-moss hover:text-ink dark:text-sage dark:hover:text-white">{{ __('View all tasks') }}</a>
                     </div>
-                    @if ($upcomingTasks->isEmpty())
-                        <p class="mt-6 border-t border-ink/10 pt-5 text-base/7 text-muted dark:border-white/10 dark:text-zinc-300">{{ __('No open upcoming tasks. Your current generated list is clear.') }}</p>
+                    @if ($dueTasks->isEmpty())
+                        <p class="mt-6 border-t border-ink/10 pt-5 text-base/7 text-muted dark:border-white/10 dark:text-zinc-300">{{ __('No open due or upcoming tasks. Your current generated list is clear.') }}</p>
                     @else
                         <div class="mt-6 grid gap-4 border-t border-ink/10 pt-5 dark:border-white/10 @md:grid-cols-2">
-                            @foreach ($upcomingTasks as $task)
+                            @foreach ($dueTasks as $task)
                                 <div class="border-s-2 border-s-sage ps-4 dark:border-s-zinc-700">
                                     <div class="flex items-start justify-between gap-3">
                                         <p class="min-w-0 text-base/7 font-medium text-ink dark:text-white">{{ $task->title }}</p>
-                                        <p class="shrink-0 text-sm font-medium tabular-nums text-muted dark:text-zinc-400">{{ $task->due_on?->format('M j') }}</p>
+                                        <div class="flex shrink-0 items-center gap-2">
+                                            @if ($task->due_on?->isBefore(today()))
+                                                <flux:badge size="sm" color="red">{{ __('Overdue') }}</flux:badge>
+                                            @endif
+                                            <p class="text-sm font-medium tabular-nums text-muted dark:text-zinc-400">{{ $task->due_on?->format('M j') }}</p>
+                                        </div>
                                     </div>
                                     <p class="mt-1 text-sm text-muted dark:text-zinc-400">{{ $task->frequency->label() }} · {{ $task->category->label() }}</p>
                                 </div>

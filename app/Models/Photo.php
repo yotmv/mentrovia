@@ -13,11 +13,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
-use Throwable;
+use LogicException;
 
 /**
  * @property int $id
+ * @property int $account_id
  * @property int $project_id
  * @property int $user_id
  * @property int|null $photo_generation_batch_id
@@ -29,6 +29,15 @@ use Throwable;
  * @property int|null $height
  * @property int|null $size_bytes
  * @property PhotoProcessingStatus $processing_status
+ * @property Carbon|null $derivatives_enqueued_at
+ * @property Carbon|null $description_enqueued_at
+ * @property string $description_state
+ * @property string|null $description_operation_uuid
+ * @property string|null $description_execution_token
+ * @property int $description_fence
+ * @property Carbon|null $description_claim_expires_at
+ * @property Carbon|null $description_provider_started_at
+ * @property string|null $description_failure_code
  * @property string|null $processing_error
  * @property Carbon|null $processed_at
  * @property string|null $original_filename
@@ -43,9 +52,12 @@ use Throwable;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'project_id', 'user_id', 'photo_generation_batch_id', 'kind', 'disk', 'path',
+    'account_id', 'project_id', 'user_id', 'photo_generation_batch_id', 'kind', 'disk', 'path',
     'derivatives', 'width', 'height', 'size_bytes',
-    'processing_status', 'processing_error', 'processed_at',
+    'processing_status', 'derivatives_enqueued_at', 'description_enqueued_at',
+    'description_state', 'description_operation_uuid', 'description_execution_token',
+    'description_fence', 'description_claim_expires_at', 'description_provider_started_at',
+    'description_failure_code', 'processing_error', 'processed_at',
     'original_filename', 'text', 'text_source',
     'provider', 'model', 'mode', 'cost_usd', 'cost_source',
 ])]
@@ -53,6 +65,31 @@ class Photo extends Model
 {
     /** @use HasFactory<PhotoFactory> */
     use HasFactory;
+
+    /** @var array<string, mixed> */
+    protected $attributes = [
+        'description_state' => 'pending',
+        'description_fence' => 0,
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $photo): void {
+            $accountId = Project::query()->whereKey($photo->project_id)->value('account_id');
+
+            if (! is_numeric($accountId)) {
+                throw new LogicException('A photo requires a project account snapshot.');
+            }
+
+            $photo->account_id = (int) $accountId;
+        });
+
+        static::updating(function (self $photo): void {
+            if ($photo->isDirty('account_id')) {
+                throw new LogicException('A photo account snapshot is immutable.');
+            }
+        });
+    }
 
     /**
      * Get the attributes that should be cast.
@@ -65,6 +102,11 @@ class Photo extends Model
             'kind' => PhotoKind::class,
             'derivatives' => 'array',
             'processing_status' => PhotoProcessingStatus::class,
+            'derivatives_enqueued_at' => 'datetime',
+            'description_enqueued_at' => 'datetime',
+            'description_fence' => 'integer',
+            'description_claim_expires_at' => 'datetime',
+            'description_provider_started_at' => 'datetime',
             'processed_at' => 'datetime',
             'text_source' => PhotoTextSource::class,
             'mode' => PhotoMode::class,
@@ -79,6 +121,12 @@ class Photo extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /** @return BelongsTo<Account, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
     }
 
     /**
@@ -145,29 +193,21 @@ class Photo extends Model
     }
 
     /**
-     * Resolve a browser-usable URL, preferring short-lived signed URLs on
-     * disks that support them since project photos are private content.
-     * Requesting a variant walks a fallback chain so the UI never serves
-     * a missing derivative — but may serve the original before the
-     * derivatives job has finished.
+     * Resolve an application URL that authorizes every private photo read.
      */
     public function url(?string $variant = null): string
     {
-        $path = $this->path;
-
         if ($variant !== null) {
-            $path = $this->derivativePath($variant)
-                ?? $this->derivativePath('card')
-                ?? $this->path;
+            $variant = $this->derivativePath($variant) !== null
+                ? $variant
+                : ($this->derivativePath('card') !== null ? 'card' : null);
         }
 
-        $disk = Storage::disk($this->disk);
-
-        try {
-            return $disk->temporaryUrl($path, now()->addMinutes(30));
-        } catch (Throwable) {
-            return $disk->url($path);
-        }
+        return route('projects.photos.show', [
+            'project' => $this->project_id,
+            'photo' => $this,
+            'variant' => $variant,
+        ]);
     }
 
     /**
@@ -177,18 +217,15 @@ class Photo extends Model
      */
     public function downloadUrl(?string $variant = null): string
     {
-        $path = $variant === null
-            ? $this->path
-            : ($this->derivativePath($variant) ?? $this->path);
+        $variant = $variant !== null && $this->derivativePath($variant) !== null
+            ? $variant
+            : null;
 
-        $disk = Storage::disk($this->disk);
-
-        try {
-            return $disk->temporaryUrl($path, now()->addMinutes(30), [
-                'ResponseContentDisposition' => 'attachment; filename="'.basename($path).'"',
-            ]);
-        } catch (Throwable) {
-            return $disk->url($path);
-        }
+        return route('projects.photos.show', [
+            'project' => $this->project_id,
+            'photo' => $this,
+            'variant' => $variant,
+            'download' => 1,
+        ]);
     }
 }

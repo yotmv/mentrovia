@@ -12,11 +12,12 @@ use Illuminate\Support\Str;
 /**
  * @property string $id
  * @property int|null $user_id
+ * @property int|null $account_id
  * @property string $title
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['user_id', 'title'])]
+#[Fillable(['user_id', 'account_id', 'title'])]
 class AgentConversation extends Model
 {
     public $incrementing = false;
@@ -32,6 +33,14 @@ class AgentConversation extends Model
     {
         static::creating(function (AgentConversation $conversation): void {
             $conversation->id ??= (string) Str::uuid();
+
+            if ($conversation->account_id === null && $conversation->user_id !== null) {
+                $accountId = User::query()->whereKey($conversation->user_id)->value('current_account_id');
+
+                if (is_numeric($accountId)) {
+                    $conversation->account_id = (int) $accountId;
+                }
+            }
         });
     }
 
@@ -41,6 +50,12 @@ class AgentConversation extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<Account, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(Account::class);
     }
 
     /**

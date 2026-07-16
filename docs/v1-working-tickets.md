@@ -1256,6 +1256,24 @@ Polish user-facing states across V1 workflows.
 - Feature tests for key empty/error states.
 - Browser smoke/manual responsive checklist.
 
+### Completion Notes
+
+Completed 2026-07-10.
+
+- Audited the established empty, loading, error, success, and next-action states across the dashboard, intake, roadmap, tasks, Advisor, knowledge, projects, Branding, and Advertising flows; existing workflow-specific states remain in place.
+- Added authenticated user feedback reporting for product issues, guidance/source feedback, feature ideas, and other beta feedback. The action is reachable from desktop and mobile user menus and stores the submitting user, category, originating page, and message.
+- Added a prominent Advisor callout when an answer relies on stale or missing-source knowledge, directing the user to verify against an official source or qualified professional before acting.
+- Added a pre-submit Photo Studio notice that generation starts paid AI work, produces up to three images, and is bounded by the configured per-image estimate before provider billing variance.
+- Added a 320 px / 768 px / desktop, light/dark manual QA checklist to `docs/deployment-runtime.md`; direct interactive viewport automation was unavailable in this workspace, so the checklist is the release gate for a browser-equipped beta environment.
+- Audited Flux UI kit usage: Branding's gated tab layout remains the only Flux Pro path, and expanded coverage confirms both kits render the same Brand Kit sections through the Flux Pro tabs and flux-free stacked fallback.
+
+Verification:
+
+- `php artisan test --compact tests/Feature/UserFeedbackTest.php tests/Feature/DeploymentRuntimeTest.php tests/Feature/AdvisorTest.php tests/Feature/BrandingUiTest.php tests/Feature/BrowserSmokeTest.php tests/Feature/PhotoGenerationPipelineTest.php` passed: 51 tests, 187 assertions.
+- `php artisan config:show queue.connections.database --no-interaction` and `php artisan config:show queue.connections.redis --no-interaction` confirmed 390-second retry windows.
+- `composer test` passed: Pint, PHPStan, and 339 Pest tests with 1,387 assertions.
+- `npm run build` passed using the Linux Node 24.15.0 runtime.
+
 ## Ticket 21 - Deployment And Runtime Notes
 
 Priority: P2
@@ -1289,6 +1307,24 @@ Document the runtime requirements needed for beta.
 
 - Documentation review.
 - Manual production-like smoke checklist.
+
+### Completion Notes
+
+Completed 2026-07-10.
+
+- Added `docs/deployment-runtime.md` with environment, provider-key, Node/Sharp, private S3-compatible storage, signed URL / `AWS_URL` fallback, queue-worker, retry, scheduler, and real Photo Studio E2E instructions.
+- Documented a safe worker contract for the 300-second image-provider request: a 330-second job timeout, a supervised 360-second worker timeout, and 390-second database/Redis/Beanstalkd retry windows. SQS visibility must also exceed the worker timeout.
+- Added 3-attempt, 10/60-second generation-job retry behavior and set queue retry-window defaults to 390 seconds.
+- Documented scheduler operation for daily `photos:prune-originals`, including the required cron entry and safe dry-run check.
+- Linked the guide from the README.
+
+Verification:
+
+- `php artisan migrate --no-interaction` applied the feedback table migration on the dev MariaDB.
+- `php artisan schedule:list --no-interaction` shows the daily `photos:prune-originals` command.
+- `php artisan route:list --except-vendor --path=feedback --no-interaction` shows the authenticated feedback GET and POST routes.
+- `composer test` passed: Pint, PHPStan, and 339 Pest tests with 1,387 assertions.
+- `npm run build` passed using the Linux Node 24.15.0 runtime.
 
 ## Suggested Execution Order
 

@@ -2,18 +2,24 @@
 
 namespace App\Livewire\Branding;
 
-use App\Ai\Text\Exceptions\TextGenerationRoleException;
+use App\Enums\AccountCapability;
+use App\Enums\ProfileFreshness;
 use App\Models\BrandKit;
 use App\Models\Business;
 use App\Models\User;
-use App\Services\Branding\BrandKitGenerationException;
+use App\Services\Accounts\AccountMutationGate;
+use App\Services\Accounts\CurrentAccount;
 use App\Services\Branding\BrandKitGenerator;
+use App\Services\ProfileFreshnessService;
+use App\Support\Ai\AiFailurePresentation;
 use Flux\Flux;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Throwable;
 
 class Index extends Component
 {
@@ -21,10 +27,26 @@ class Index extends Component
 
     public ?string $generationError = null;
 
+    public bool $generationErrorShowsSettings = false;
+
     /**
      * Active kit tab when the Flux Pro tabbed layout is rendered.
      */
     public string $tab = 'identity';
+
+    protected CurrentAccount $currentAccount;
+
+    protected ProfileFreshnessService $profileFreshness;
+
+    public function boot(CurrentAccount $currentAccount, ProfileFreshnessService $profileFreshness): void
+    {
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        $this->currentAccount = $currentAccount;
+        $this->profileFreshness = $profileFreshness;
+        $this->currentAccount->resolve($user);
+    }
 
     public function generate(BrandKitGenerator $generator): void
     {
@@ -35,12 +57,17 @@ class Index extends Component
             return;
         }
 
+        $this->authorize('operate', $business);
+
         $this->generationError = null;
+        $this->generationErrorShowsSettings = false;
 
         try {
             $kit = $generator->generate($user, $business);
-        } catch (BrandKitGenerationException|TextGenerationRoleException) {
-            $this->generationError = __('Brand kit generation did not return usable results. Nothing was saved. Try again in a moment.');
+        } catch (Throwable $exception) {
+            $failure = AiFailurePresentation::fromException($exception);
+            $this->generationError = $failure->message;
+            $this->generationErrorShowsSettings = $failure->showsSettingsAction;
 
             return;
         }
@@ -59,12 +86,19 @@ class Index extends Component
             return;
         }
 
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+        $this->authorize('operate', $kit->business);
+
         $this->generationError = null;
+        $this->generationErrorShowsSettings = false;
 
         try {
-            $generator->regenerateSection($kit, $section);
-        } catch (BrandKitGenerationException|TextGenerationRoleException) {
-            $this->generationError = __('That section could not be regenerated. The rest of the kit is unchanged. Try again in a moment.');
+            $generator->regenerateSection($kit, $section, $user);
+        } catch (Throwable $exception) {
+            $failure = AiFailurePresentation::fromException($exception);
+            $this->generationError = $failure->message;
+            $this->generationErrorShowsSettings = $failure->showsSettingsAction;
 
             return;
         }
@@ -74,13 +108,15 @@ class Index extends Component
         Flux::toast(__('Section regenerated.'), variant: 'success');
     }
 
-    public function selectPreference(string $type, int $index): void
+    public function selectPreference(string $type, int $index, AccountMutationGate $accountMutationGate): void
     {
         $kit = $this->kit();
 
         if (! $kit instanceof BrandKit) {
             return;
         }
+
+        $this->authorize('operate', $kit->business);
 
         $value = match ($type) {
             'name' => $kit->name_ideas[$index] ?? null,
@@ -101,7 +137,15 @@ class Index extends Component
             $preferences[$type] = $value;
         }
 
-        $kit->update(['preferences' => $preferences === [] ? null : $preferences]);
+        $user = Auth::user();
+        abort_unless($user instanceof User, 401);
+
+        DB::transaction(function () use ($kit, $preferences, $accountMutationGate, $user): void {
+            $accountMutationGate->lockMemberOrFail($kit->business->account_id, $user->id, AccountCapability::Workspace);
+            BrandKit::query()->lockForUpdate()->findOrFail($kit->id)->update([
+                'preferences' => $preferences === [] ? null : $preferences,
+            ]);
+        }, attempts: 3);
 
         unset($this->kits, $this->kit);
     }
@@ -111,7 +155,7 @@ class Index extends Component
     {
         $user = Auth::user();
 
-        return $user instanceof User ? $user->business()->first() : null;
+        return $user instanceof User ? $this->currentAccount->account()->business : null;
     }
 
     /**
@@ -129,7 +173,6 @@ class Index extends Component
         }
 
         return $business->brandKits()
-            ->where('user_id', Auth::id())
             ->orderByDesc('version')
             ->get();
     }
@@ -146,6 +189,27 @@ class Index extends Component
         }
 
         return $this->kits()->first();
+    }
+
+    #[Computed]
+    public function kitFreshness(): ?ProfileFreshness
+    {
+        $kit = $this->kit();
+        $business = $this->business();
+
+        return $kit instanceof BrandKit && $business instanceof Business
+            ? $this->profileFreshness->brand($kit, $business)
+            : null;
+    }
+
+    public function sectionFreshness(string $section): ProfileFreshness
+    {
+        $kit = $this->kit();
+        $business = $this->business();
+
+        return $kit instanceof BrandKit && $business instanceof Business
+            ? $this->profileFreshness->brandSection($kit, $business, $section)
+            : ProfileFreshness::Unknown;
     }
 
     public function render(): View

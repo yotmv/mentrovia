@@ -7,6 +7,7 @@ use App\Models\AdvertisingKit;
 use App\Models\BrandKit;
 use App\Models\Business;
 use App\Models\User;
+use App\Services\BusinessProfileContext;
 use Livewire\Livewire;
 
 /**
@@ -63,6 +64,31 @@ test('advertising page renders the empty state with a brand kit hint before any 
         ->assertSee(__('Generate a brand kit first'));
 });
 
+test('advertising profile freshness explains current stale and unknown inputs explicitly', function () {
+    $currentBusiness = Business::factory()->create();
+    AdvertisingKit::factory()->forBusiness($currentBusiness)->create([
+        'profile_fingerprint' => app(BusinessProfileContext::class)->marketingFingerprint($currentBusiness),
+    ]);
+    Livewire::actingAs($currentBusiness->user)
+        ->test(Index::class)
+        ->assertSee('Current: This advertising kit records the current company profile and brand kit.');
+
+    $staleBusiness = Business::factory()->create();
+    AdvertisingKit::factory()->forBusiness($staleBusiness)->create([
+        'profile_fingerprint' => str_repeat('0', 64),
+    ]);
+    Livewire::actingAs($staleBusiness->user)
+        ->test(Index::class)
+        ->assertSee('Stale: Your company profile or brand kit changed after this advertising kit was generated.');
+
+    $unknownBusiness = Business::factory()->create();
+    AdvertisingKit::factory()->forBusiness($unknownBusiness)->create();
+    Livewire::actingAs($unknownBusiness->user)
+        ->test(Index::class)
+        ->assertSee('Unknown: Input version not recorded.')
+        ->assertSee('create a new version');
+});
+
 test('the empty state names the brand kit version when one exists', function () {
     $business = Business::factory()->create();
     BrandKit::factory()->forBusiness($business)->create(['version' => 3]);
@@ -105,7 +131,7 @@ test('a failed generation shows an error state and persists nothing', function (
     Livewire::actingAs($business->user)
         ->test(Index::class)
         ->call('generate')
-        ->assertSet('generationError', __('Advertising generation did not return usable results. Nothing was saved. Try again in a moment.'))
+        ->assertSet('generationError', __('The AI provider did not return usable results. Retry in a moment. Nothing new was saved.'))
         ->assertSee(__('Generation failed'));
 
     expect(AdvertisingKit::query()->count())->toBe(0);

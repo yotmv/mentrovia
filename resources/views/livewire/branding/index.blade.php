@@ -40,10 +40,19 @@
         </div>
     @else
         @if ($generationError !== null)
-            <flux:callout variant="danger" icon="exclamation-triangle" class="mb-6">
-                <flux:callout.heading>{{ __('Generation failed') }}</flux:callout.heading>
-                <flux:callout.text>{{ $generationError }}</flux:callout.text>
-            </flux:callout>
+            <div role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" x-data x-init="$nextTick(() => $el.focus())" class="mb-6">
+                <flux:callout variant="danger" icon="exclamation-triangle">
+                    <flux:callout.heading>{{ __('Generation failed') }}</flux:callout.heading>
+                    <flux:callout.text>{{ $generationError }}</flux:callout.text>
+                    @if ($generationErrorShowsSettings)
+                        <x-slot name="actions">
+                            <flux:button size="sm" :href="route('ai.edit')" wire:navigate>
+                                {{ __('Review AI settings') }}
+                            </flux:button>
+                        </x-slot>
+                    @endif
+                </flux:callout>
+            </div>
         @endif
 
         @if ($this->kit === null)
@@ -67,9 +76,44 @@
                 $kit = $this->kit;
                 $preferences = $kit->preferences ?? [];
                 $usesProKit = App\Enums\FluxUiKit::current()->isPro();
+                $sectionLabels = [
+                    'name_ideas' => __('Names'),
+                    'tagline_options' => __('Taglines'),
+                    'positioning' => __('Positioning'),
+                    'tone_voice' => __('Voice'),
+                    'color_palette' => __('Colors'),
+                    'font_notes' => __('Typography'),
+                    'image_prompts' => __('Image prompts'),
+                    'brand_board_prompt' => __('Brand board'),
+                    'social_bios' => __('Social bios'),
+                ];
             @endphp
 
             <div class="space-y-6" wire:loading.class="opacity-50" wire:target="generate">
+                <div class="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <flux:heading size="sm">{{ __('Profile freshness') }}</flux:heading>
+                            <flux:text size="sm" class="mt-1 text-zinc-500 dark:text-zinc-400">
+                                {{ match ($this->kitFreshness) {
+                                    App\Enums\ProfileFreshness::Current => __('Current: This brand kit records the current company profile version.'),
+                                    App\Enums\ProfileFreshness::Stale => __('Stale: Your company profile changed after one or more sections were generated. Regenerate only the sections you want to refresh, or create a new version.'),
+                                    App\Enums\ProfileFreshness::Unknown => __('Unknown: Input version not recorded. This legacy brand kit cannot be compared with the current profile; regenerate a section or create a new version.'),
+                                } }}
+                            </flux:text>
+                        </div>
+                        <x-profile-freshness :freshness="$this->kitFreshness" />
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @foreach ($sectionLabels as $section => $label)
+                            <span class="inline-flex items-center gap-2 rounded-md bg-zinc-50 px-2 py-1 dark:bg-white/5">
+                                <span class="text-sm text-zinc-700 dark:text-zinc-300">{{ $label }}</span>
+                                <x-profile-freshness :freshness="$this->sectionFreshness($section)" />
+                            </span>
+                        @endforeach
+                    </div>
+                </div>
+
                 @include('livewire.branding.partials.picks')
 
                 @if ($usesProKit)

@@ -1,7 +1,9 @@
 <?php
 
+use App\Jobs\EraseUserAccountData;
 use App\Livewire\Settings\Profile;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
 test('profile page is displayed', function () {
@@ -27,6 +29,9 @@ test('profile information can be updated', function () {
     expect($user->name)->toEqual('Test User');
     expect($user->email)->toEqual('test@example.com');
     expect($user->email_verified_at)->toBeNull();
+
+    $this->get(route('dashboard'))
+        ->assertRedirect(route('verification.notice'));
 });
 
 test('email verification status is unchanged when email address is unchanged', function () {
@@ -44,7 +49,9 @@ test('email verification status is unchanged when email address is unchanged', f
     expect($user->refresh()->email_verified_at)->not->toBeNull();
 });
 
-test('user can delete their account', function () {
+test('user can request account deletion', function () {
+    Queue::fake();
+
     $user = User::factory()->create();
 
     $this->actingAs($user);
@@ -57,8 +64,14 @@ test('user can delete their account', function () {
         ->assertHasNoErrors()
         ->assertRedirect('/');
 
-    expect($user->fresh())->toBeNull();
+    Queue::assertPushed(EraseUserAccountData::class, fn (EraseUserAccountData $job): bool => $job->userId === $user->id);
+
+    expect($user->fresh()?->account_erasure_started_at)->not->toBeNull();
     expect(auth()->check())->toBeFalse();
+
+    simulateWorkspaceErasureAndFinishUser($user->id);
+
+    expect($user->fresh())->toBeNull();
 });
 
 test('correct password must be provided to delete account', function () {

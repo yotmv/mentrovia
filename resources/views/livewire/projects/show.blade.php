@@ -6,7 +6,7 @@
             <div class="flex items-center gap-3">
                 <flux:heading size="xl">{{ $project->name }}</flux:heading>
                 @unless ($project->isOwnedBy(auth()->user()))
-                    <flux:badge size="sm" color="blue">{{ __('Shared with you') }}</flux:badge>
+                    <flux:badge size="sm" color="zinc">{{ __('Shared with you') }}</flux:badge>
                 @endunless
             </div>
             <flux:text class="mt-1">{{ $project->project_date->format('F j, Y') }} · {{ __('Owner: :name', ['name' => $project->owner->name]) }}</flux:text>
@@ -61,6 +61,20 @@
             <flux:text class="mt-2 text-red-500">{{ $message }}</flux:text>
         @enderror
 
+        @if ($aiError !== null)
+            <flux:callout variant="danger" icon="exclamation-triangle" class="mt-3">
+                <flux:callout.heading>{{ __('Generation could not start') }}</flux:callout.heading>
+                <flux:callout.text>{{ $aiError }}</flux:callout.text>
+                @if ($aiErrorShowsSettings)
+                    <x-slot name="actions">
+                        <flux:button size="sm" :href="route('ai.edit')" wire:navigate>
+                            {{ __('Review AI settings') }}
+                        </flux:button>
+                    </x-slot>
+                @endif
+            </flux:callout>
+        @endif
+
         @if ($this->uploadedPhotos->isEmpty())
             <div class="mt-4 rounded-xl border border-dashed border-zinc-300 p-8 text-center dark:border-zinc-700">
                 <flux:text>{{ __('No photos uploaded yet.') }}</flux:text>
@@ -69,7 +83,7 @@
             <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 @foreach ($this->uploadedPhotos as $photo)
                     <div wire:key="uploaded-{{ $photo->id }}"
-                        class="overflow-hidden rounded-xl border {{ in_array($photo->id, $selectedPhotoIds, true) ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-zinc-200 dark:border-zinc-700' }}">
+                        class="overflow-hidden rounded-xl border {{ in_array($photo->id, $selectedPhotoIds, true) ? 'border-moss ring-2 ring-moss/30' : 'border-zinc-200 dark:border-zinc-700' }}">
                         <button type="button" wire:click="toggleSelection({{ $photo->id }})"
                             @disabled(! $this->canEdit) class="block w-full cursor-pointer">
                             <img src="{{ $photo->url('thumb') }}" alt="{{ $photo->text ?? $photo->original_filename }}"
@@ -123,6 +137,11 @@
                                 {{ trans_choice(':count photo selected|:count photos selected', count($selectedPhotoIds)) }}
                             </flux:text>
                         </div>
+                        <flux:callout icon="banknotes" color="amber" inline>
+                            <flux:callout.text>
+                                {{ __('This starts paid AI work: up to three image generations. The chooser caps each generated-image estimate at :cost; provider billing can vary.', ['cost' => '$'.number_format((float) config('photostudio.chooser.requirements.max_usd_per_image'), 2)]) }}
+                            </flux:callout.text>
+                        </flux:callout>
                     </form>
                 </div>
             @endif
@@ -278,7 +297,7 @@
                     @foreach ($variants as $key => $variant)
                         <button type="button" wire:key="gallery-variant-{{ $key }}"
                             wire:click="selectGalleryVariant('{{ $key }}')"
-                            class="w-28 shrink-0 cursor-pointer overflow-hidden rounded-lg border text-left transition {{ $galleryVariant === $key ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-zinc-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500' }}">
+                            class="w-28 shrink-0 cursor-pointer overflow-hidden rounded-lg border text-left transition {{ $galleryVariant === $key ? 'border-moss ring-2 ring-moss/30' : 'border-zinc-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500' }}">
                             <img src="{{ $galleryPhoto->url($key === 'original' ? null : $key) }}"
                                 alt="{{ $variant['label'] }}" loading="lazy" decoding="async"
                                 class="aspect-square w-full object-cover">
@@ -329,7 +348,7 @@
                 <div>
                     <flux:heading size="lg">{{ __('Share project') }}</flux:heading>
                     <flux:text class="mt-1">
-                        {{ __('Only you can see this project until you share it. Viewers can browse photos; editors can also upload and generate.') }}
+                        {{ __('Invite someone by email. They get access only after signing in with that verified address and accepting. Viewers can browse photos; editors can also upload and generate.') }}
                     </flux:text>
                 </div>
 
@@ -344,9 +363,31 @@
                     </flux:select>
 
                     <div class="flex justify-end">
-                        <flux:button type="submit" variant="primary">{{ __('Share') }}</flux:button>
+                        <flux:button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="share">
+                            {{ __('Send invitation') }}
+                        </flux:button>
                     </div>
                 </form>
+
+                @if ($this->pendingInvitations->isNotEmpty())
+                    <div class="space-y-2">
+                        <flux:heading size="sm">{{ __('Pending invitations') }}</flux:heading>
+                        @foreach ($this->pendingInvitations as $invitation)
+                            <div wire:key="invitation-{{ $invitation->public_id }}" class="flex items-center justify-between gap-2">
+                                <div>
+                                    <flux:text class="text-sm font-medium">{{ $invitation->email }}</flux:text>
+                                    <flux:text class="text-xs">
+                                        {{ $invitation->permission->label() }} · {{ __('Expires :date', ['date' => $invitation->expires_at->toFormattedDateString()]) }}
+                                    </flux:text>
+                                </div>
+                                <flux:button size="sm" variant="ghost" icon="x-mark"
+                                    :aria-label="__('Revoke invitation for :email', ['email' => $invitation->email])"
+                                    wire:loading.attr="disabled" wire:target="revokeInvitation('{{ $invitation->public_id }}')"
+                                    wire:click="revokeInvitation('{{ $invitation->public_id }}')" />
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
 
                 @if ($this->sharedUsers->isNotEmpty())
                     <div class="space-y-2">

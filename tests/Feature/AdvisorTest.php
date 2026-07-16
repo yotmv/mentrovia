@@ -18,6 +18,7 @@ use App\Models\KnowledgeArticle;
 use App\Models\KnowledgeSource;
 use App\Models\User;
 use App\Models\ValidationRun;
+use App\Services\Advisor\AdvisorAnswerService;
 use Illuminate\Support\Facades\RateLimiter;
 use Livewire\Livewire;
 
@@ -70,10 +71,35 @@ test('low-risk advisor answer uses business context and skips validation', funct
 
     $fake->assertGenerated(function (TextGenerationRequest $request) use ($business): bool {
         return $request->role === TextGenerationRole::AdvisorAnswer
-            && $request->context['business']['id'] === $business->id
+            && $request->context['business']['business']['industry'] === $business->industry
             && $request->context['knowledge'][0]['title'] === 'Business banking separation basics';
     });
 });
+
+test('advisor retrieval excludes every non-published knowledge status', function (ArticleStatus $status) {
+    $privateArticle = advisorArticle([
+        'title' => 'Texas payroll private guidance',
+        'slug' => 'texas-payroll-private-'.$status->value,
+        'category' => ArticleCategory::Payroll,
+        'status' => $status,
+    ]);
+    $publishedArticle = advisorArticle([
+        'title' => 'Texas payroll published guidance',
+        'slug' => 'texas-payroll-published-'.$status->value,
+        'category' => ArticleCategory::Payroll,
+        'status' => ArticleStatus::Published,
+    ]);
+
+    $articles = app(AdvisorAnswerService::class)->relevantArticles('Texas payroll guidance');
+
+    expect($articles->modelKeys())
+        ->toContain($publishedArticle->getKey())
+        ->not->toContain($privateArticle->getKey());
+})->with([
+    ArticleStatus::Draft,
+    ArticleStatus::NeedsReview,
+    ArticleStatus::Archived,
+]);
 
 test('high-risk advisor answer runs validation and shows professional review language', function () {
     $user = User::factory()->create();
@@ -120,7 +146,7 @@ test('stale advisor source runs validation and surfaces source refresh decision'
         'body_markdown' => advisorCompliantBody('Review official sales tax permit guidance before collecting taxable sales.'),
         'last_verified_at' => now()->subYear(),
         'next_review_at' => now()->subDay(),
-        'status' => ArticleStatus::NeedsReview,
+        'status' => ArticleStatus::Published,
     ]);
 
     TextRoleManager::fake([
@@ -134,7 +160,9 @@ test('stale advisor source runs validation and surfaces source refresh decision'
         ->set('question', 'Do I need a Texas sales tax permit?')
         ->call('ask')
         ->assertSee('source as stale')
-        ->assertSee('Needs source refresh');
+        ->assertSee('Needs source refresh')
+        ->assertSee('Source refresh needed')
+        ->assertSee('confirm the current requirement');
 
     expect(ValidationRun::firstOrFail()->aggregate_decision)->toBe(ValidationDecision::NeedsSourceRefresh);
 });
@@ -239,7 +267,7 @@ test('advisor quota blocks high cost answer generation', function () {
     Business::factory()->for($user)->create();
 
     for ($attempt = 0; $attempt < 6; $attempt++) {
-        RateLimiter::increment('advisor-answer:'.$user->id, decaySeconds: 3600);
+        RateLimiter::increment('advisor-answer:'.$user->current_account_id.':'.$user->id, decaySeconds: 3600);
     }
 
     TextRoleManager::fake()->preventStrayPrompts();
@@ -283,16 +311,18 @@ test('advisor session history persists across questions', function () {
         ->and(AgentConversationMessage::query()->where('agent', 'advisor')->count())->toBe(4);
 });
 
-test('advisor history page shows only the authenticated users answers', function () {
+test('advisor history page shows only the selected accounts answers', function () {
     $user = User::factory()->create();
     $otherUser = User::factory()->create();
 
     $conversation = AgentConversation::create([
         'user_id' => $user->id,
+        'account_id' => $user->current_account_id,
         'title' => 'Advisor Q&A',
     ]);
     $otherConversation = AgentConversation::create([
         'user_id' => $otherUser->id,
+        'account_id' => $otherUser->current_account_id,
         'title' => 'Advisor Q&A',
     ]);
 
@@ -339,6 +369,7 @@ test('advisor message history is scoped to the authenticated user', function () 
 
     $otherConversation = AgentConversation::create([
         'user_id' => $otherUser->id,
+        'account_id' => $otherUser->current_account_id,
         'title' => 'Advisor Q&A',
     ]);
 

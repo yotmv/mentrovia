@@ -5,6 +5,7 @@
         @include('partials.head')
     </head>
     <body class="min-h-dvh bg-cream font-sans text-ink antialiased dark:bg-zinc-950 dark:text-zinc-100">
+        <a href="#main-content" class="sr-only z-50 rounded-md bg-moss px-4 py-2 text-base font-medium text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4">{{ __('Skip to content') }}</a>
         <header class="border-b border-ink/10 bg-cream/95 dark:border-white/10 dark:bg-zinc-950/95">
             <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-6 lg:px-8">
                 <x-app-logo href="{{ route('home') }}" aria-label="{{ __('Mentrovia homepage') }}" />
@@ -15,7 +16,7 @@
                     <a href="#trust" class="hover:text-ink dark:hover:text-white">{{ __('Why Mentrovia') }}</a>
                 </nav>
 
-                <div class="flex items-center gap-3">
+                <div class="hidden items-center gap-3 lg:flex">
                     @auth
                         <a href="{{ route('dashboard') }}" class="rounded-full border border-ink/15 px-3 py-2 text-sm font-medium text-ink hover:border-moss hover:text-moss dark:border-white/20 dark:text-white dark:hover:border-sage dark:hover:text-sage">
                             {{ __('Open dashboard') }}
@@ -31,10 +32,27 @@
                         @endif
                     @endauth
                 </div>
+                <details class="relative lg:hidden">
+                    <summary class="cursor-pointer list-none rounded-full border border-ink/15 px-3 py-2 text-base font-medium text-ink sm:text-sm dark:border-white/20 dark:text-white">{{ __('Menu') }}</summary>
+                    <div class="absolute end-0 top-[calc(100%+0.75rem)] z-20 grid w-64 gap-1 rounded-2xl bg-white p-3 shadow-lg ring-1 ring-ink/10 dark:bg-zinc-900 dark:shadow-none dark:ring-white/10">
+                        <a href="#how-it-works" class="rounded-lg px-3 py-2.5 text-base text-muted hover:bg-cream hover:text-ink sm:text-sm dark:text-zinc-300 dark:hover:bg-white/5 dark:hover:text-white">{{ __('How it works') }}</a>
+                        <a href="#guidance" class="rounded-lg px-3 py-2.5 text-base text-muted hover:bg-cream hover:text-ink sm:text-sm dark:text-zinc-300 dark:hover:bg-white/5 dark:hover:text-white">{{ __('Guidance') }}</a>
+                        <a href="#trust" class="rounded-lg px-3 py-2.5 text-base text-muted hover:bg-cream hover:text-ink sm:text-sm dark:text-zinc-300 dark:hover:bg-white/5 dark:hover:text-white">{{ __('Why Mentrovia') }}</a>
+                        <div class="my-2 border-t border-ink/10 dark:border-white/10"></div>
+                        @auth
+                            <a href="{{ route('dashboard') }}" class="rounded-lg bg-moss px-3 py-2.5 text-center text-base font-medium text-white sm:text-sm">{{ __('Open Today') }}</a>
+                        @else
+                            <a href="{{ route('login') }}" class="rounded-lg px-3 py-2.5 text-base font-medium text-ink hover:bg-cream sm:text-sm dark:text-white dark:hover:bg-white/5">{{ __('Log in') }}</a>
+                            @if (Route::has('register'))
+                                <a href="{{ route('register') }}" class="rounded-lg bg-moss px-3 py-2.5 text-center text-base font-medium text-white sm:text-sm">{{ __('Build your roadmap') }}</a>
+                            @endif
+                        @endauth
+                    </div>
+                </details>
             </div>
         </header>
 
-        <main class="isolate overflow-hidden">
+        <main id="main-content" class="isolate overflow-hidden">
             <section class="py-16 sm:py-20 lg:py-28">
                 <div class="mx-auto grid max-w-7xl items-center gap-12 px-5 sm:px-6 lg:grid-cols-[19fr_17fr] lg:px-8">
                     <div>

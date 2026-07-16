@@ -89,6 +89,96 @@ test('employee and contractor profile changes add newly applicable tasks idempot
         ->and($business->tasks()->count())->toBe(9);
 });
 
+test('task applicability uses fresh locked business facts instead of a stale caller instance', function () {
+    $business = Business::factory()->create([
+        'employee_count' => 0,
+        'uses_contractors' => false,
+        'sells_taxable_goods' => 'no',
+        'sells_taxable_services' => 'no',
+    ]);
+    $staleBusiness = $business->fresh();
+    Business::query()->whereKey($business->id)->update(['employee_count' => 2]);
+
+    app(RecurringTaskGenerator::class)->generateFor($staleBusiness);
+
+    expect($business->tasks()->where('category', TaskCategory::Payroll)->count())->toBe(3);
+});
+
+test('a month day task due today does not roll into the next year', function () {
+    Carbon::setTestNow('2026-01-31 10:00:00');
+    $business = Business::factory()->create();
+
+    app(RecurringTaskGenerator::class)->generateFor($business);
+
+    expect($business->tasks()
+        ->whereHas('template', fn ($query) => $query->where('slug', 'yearly-compliance-sweep'))
+        ->sole()
+        ->due_on?->toDateString())->toBe('2026-01-31');
+});
+
+test('inapplicable tasks retire and later reactivate without losing completion history', function () {
+    $owner = User::factory()->create();
+    $business = Business::factory()->withEmployees(2)->for($owner)->create();
+    $generator = app(RecurringTaskGenerator::class);
+    $generator->generateFor($business);
+    $task = $business->tasks()->where('category', TaskCategory::Payroll)->firstOrFail();
+    $task->forceFill(['completed_at' => now(), 'notes' => 'Preserve this evidence.'])->save();
+    TaskCompletion::factory()->for($task, 'task')->for($business)->create(['completed_for' => $task->due_on]);
+
+    $business->forceFill(['employee_count' => 0, 'first_employee_on' => null, 'has_payroll' => false])->save();
+    $generator->generateFor($business->refresh());
+
+    expect($task->refresh()->is_active)->toBeFalse()
+        ->and($task->retired_at)->not->toBeNull()
+        ->and($task->completed_at)->not->toBeNull()
+        ->and($task->notes)->toBe('Preserve this evidence.')
+        ->and($task->completions()->count())->toBe(1);
+
+    $this->actingAs($owner)
+        ->get(route('tasks.index', ['period' => 'all']))
+        ->assertOk()
+        ->assertDontSee($task->title);
+    $this->patch(route('tasks.update', $task), ['completed' => false, 'notes' => 'Unauthorized rewrite'])
+        ->assertForbidden();
+
+    $business->update(['employee_count' => 1]);
+    $generator->generateFor($business->refresh());
+
+    expect($task->refresh()->is_active)->toBeTrue()
+        ->and($task->retired_at)->toBeNull()
+        ->and($task->completed_at)->not->toBeNull()
+        ->and($task->completions()->count())->toBe(1);
+});
+
+test('reactivating an overdue incomplete task refreshes its due date and preserves history', function () {
+    $business = Business::factory()->withEmployees(2)->create();
+    $generator = app(RecurringTaskGenerator::class);
+    $generator->generateFor($business);
+    $task = $business->tasks()
+        ->whereHas('template', fn ($query) => $query->where('slug', 'weekly-payroll-hours-review'))
+        ->firstOrFail();
+    $task->forceFill([
+        'due_on' => '2026-06-28',
+        'completed_at' => null,
+        'notes' => 'Carry this open evidence forward.',
+    ])->save();
+    TaskCompletion::factory()->for($task, 'task')->for($business)->create([
+        'completed_for' => '2026-05-31',
+    ]);
+
+    $business->update(['employee_count' => 0]);
+    $generator->generateFor($business->fresh());
+    Carbon::setTestNow('2026-08-01 10:00:00');
+    $business->update(['employee_count' => 1]);
+    $generator->generateFor($business->fresh());
+
+    expect($task->refresh()->is_active)->toBeTrue()
+        ->and($task->due_on?->toDateString())->toBe('2026-08-02')
+        ->and($task->completed_at)->toBeNull()
+        ->and($task->notes)->toBe('Carry this open evidence forward.')
+        ->and($task->completions()->count())->toBe(1);
+});
+
 test('regeneration preserves completed task history', function () {
     $business = Business::factory()->create();
     $generator = app(RecurringTaskGenerator::class);
@@ -116,6 +206,77 @@ test('regeneration preserves completed task history', function () {
         ->and($task->completions()->count())->toBe(1);
 });
 
+test('completed tasks roll into a later due period while preserving completion history', function () {
+    $business = Business::factory()->create();
+    $generator = app(RecurringTaskGenerator::class);
+
+    $generator->generateFor($business);
+
+    $task = $business->tasks()
+        ->whereHas('template', fn ($query) => $query->where('slug', 'monthly-bookkeeping-close'))
+        ->firstOrFail();
+    $originalDueDate = $task->due_on;
+    $task->forceFill(['completed_at' => now(), 'notes' => 'July is closed.'])->save();
+    TaskCompletion::create([
+        'business_task_id' => $task->id,
+        'business_id' => $business->id,
+        'completed_for' => $originalDueDate,
+        'completed_at' => now(),
+        'notes' => 'July is closed.',
+    ]);
+
+    Carbon::setTestNow('2026-08-01 10:00:00');
+    $generator->generateFor($business->refresh());
+
+    expect($task->refresh()->due_on?->toDateString())->toBe('2026-08-31')
+        ->and($task->completed_at)->toBeNull()
+        ->and($task->notes)->toBeNull()
+        ->and($task->completions()->count())->toBe(1)
+        ->and($task->completions()->sole()->completed_for->toDateString())->toBe('2026-07-31');
+});
+
+test('incomplete overdue tasks are never advanced', function () {
+    $business = Business::factory()->create();
+    $generator = app(RecurringTaskGenerator::class);
+
+    $generator->generateFor($business);
+
+    $task = $business->tasks()
+        ->whereHas('template', fn ($query) => $query->where('slug', 'monthly-bookkeeping-close'))
+        ->firstOrFail();
+    $task->forceFill(['due_on' => '2026-06-30', 'completed_at' => null, 'notes' => 'Still waiting.'])->save();
+
+    Carbon::setTestNow('2026-08-01 10:00:00');
+    $generator->generateFor($business->refresh());
+
+    expect($task->refresh()->due_on?->toDateString())->toBe('2026-06-30')
+        ->and($task->completed_at)->toBeNull()
+        ->and($task->notes)->toBe('Still waiting.');
+});
+
+test('repeated generation does not advance a reopened task twice', function () {
+    $business = Business::factory()->create();
+    $generator = app(RecurringTaskGenerator::class);
+
+    $generator->generateFor($business);
+
+    $task = $business->tasks()
+        ->whereHas('template', fn ($query) => $query->where('slug', 'monthly-bookkeeping-close'))
+        ->firstOrFail();
+    $task->forceFill(['completed_at' => now(), 'notes' => 'July is closed.'])->save();
+    TaskCompletion::factory()->for($task, 'task')->for($business)->create([
+        'completed_for' => $task->due_on,
+    ]);
+
+    Carbon::setTestNow('2026-08-01 10:00:00');
+    $generator->generateFor($business->refresh());
+    $generator->generateFor($business->refresh());
+
+    expect($task->refresh()->due_on?->toDateString())->toBe('2026-08-31')
+        ->and($task->completed_at)->toBeNull()
+        ->and($task->completions()->count())->toBe(1);
+});
+
 test('saving intake creates applicable recurring tasks', function () {
     $user = User::factory()->create();
     $this->actingAs($user);
@@ -139,7 +300,10 @@ test('saving intake creates applicable recurring tasks', function () {
         ->set('monthly_revenue_range', '1k_to_5k')
         ->set('first_sale_on', '2025-03-01')
         ->set('filing_confidence', 'some_knowledge')
-        ->set('step', 5)
+        ->call('next')
+        ->call('next')
+        ->call('next')
+        ->call('next')
         ->call('save')
         ->assertHasNoErrors();
 

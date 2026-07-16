@@ -41,7 +41,7 @@
                     <span class="block h-20 rounded-md inset-ring inset-ring-black/10 dark:inset-ring-white/10" style="background-color: {{ $color['hex'] }}"></span>
                     <span class="mt-2 flex items-center gap-1">
                         @if ($isPicked)
-                            <flux:icon.check class="size-4 shrink-0 text-blue-600 dark:text-blue-400" />
+                            <flux:icon.check class="size-4 shrink-0 text-moss dark:text-sage" />
                         @endif
                         <span class="min-w-0 truncate text-base/7 font-medium text-zinc-900 dark:text-zinc-100 sm:text-sm/6">{{ $color['name'] }}</span>
                     </span>
@@ -68,7 +68,7 @@
                         aria-pressed="{{ $isPicked ? 'true' : 'false' }}"
                         @class([
                             'inline-flex items-center gap-2 rounded-full border py-1.5 pr-3 pl-1.5 text-base/7 sm:text-sm/6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500',
-                            'border-blue-500 bg-blue-50 text-blue-900 dark:border-blue-400 dark:bg-blue-500/10 dark:text-blue-200' => $isPicked,
+                            'border-moss bg-sage/50 text-moss dark:border-sage dark:bg-white/10 dark:text-sage' => $isPicked,
                             'border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-white/5' => ! $isPicked,
                         ])
                     >

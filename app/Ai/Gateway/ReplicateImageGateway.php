@@ -3,6 +3,7 @@
 namespace App\Ai\Gateway;
 
 use App\Ai\Images\Exceptions\ImageGenerationRejectedException;
+use App\Ai\Images\GeneratedImageResponseValidator;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
@@ -64,10 +65,9 @@ class ReplicateImageGateway implements ImageGateway
 
         if (($data['status'] ?? null) !== 'succeeded') {
             throw new RuntimeException(sprintf(
-                'Replicate prediction for [%s] finished with status [%s]: %s',
+                'Replicate prediction for [%s] finished with status [%s].',
                 $model,
                 $data['status'] ?? 'unknown',
-                $data['error'] ?? 'no error detail',
             ));
         }
 
@@ -155,9 +155,11 @@ class ReplicateImageGateway implements ImageGateway
         $deadline = now()->addSeconds($timeout);
 
         while (in_array($data['status'] ?? null, ['starting', 'processing'], true)) {
-            if ($pollUrl === null || now()->greaterThan($deadline)) {
+            if (! is_string($pollUrl) || $pollUrl === '' || now()->greaterThan($deadline)) {
                 throw new RuntimeException('Timed out waiting for the Replicate prediction to finish.');
             }
+
+            $this->ensureTrustedProviderUrl($provider, $pollUrl);
 
             Sleep::for(1)->second();
 
@@ -180,17 +182,75 @@ class ReplicateImageGateway implements ImageGateway
             throw new RuntimeException("Replicate prediction for [{$model}] returned no output image.");
         }
 
-        $response = Http::timeout(60)->throw()->get($url);
+        $this->ensureTrustedOutputUrl($url);
 
-        return new GeneratedImage(
-            base64_encode($response->body()),
-            $response->header('Content-Type') ?: 'image/png',
-        );
+        $response = Http::connectTimeout((int) config('photostudio.http.connect_timeout', 10))
+            ->timeout(60)
+            ->withOptions([
+                'allow_redirects' => false,
+                ...GeneratedImageResponseValidator::httpOptions(),
+            ])
+            ->get($url);
+
+        return GeneratedImageResponseValidator::fromResponse($response);
+    }
+
+    protected function ensureTrustedProviderUrl(ImageProvider $provider, string $url): void
+    {
+        $config = $provider->additionalConfiguration();
+        $providerUrl = rtrim($config['url'] ?? 'https://api.replicate.com/v1', '/');
+
+        if (! $this->isSameHttpsOrigin($url, $providerUrl)) {
+            throw new RuntimeException('Replicate returned an untrusted prediction status URL.');
+        }
+    }
+
+    protected function ensureTrustedOutputUrl(string $url): void
+    {
+        $parts = parse_url($url);
+        $host = strtolower((string) ($parts['host'] ?? ''));
+        $allowedHosts = config('photostudio.http.replicate_output_hosts', ['replicate.delivery']);
+        $hasTrustedHost = false;
+
+        foreach (is_array($allowedHosts) ? $allowedHosts : [] as $allowedHost) {
+            if (! is_string($allowedHost)) {
+                continue;
+            }
+
+            $allowedHost = strtolower(trim($allowedHost));
+
+            if ($host === $allowedHost || str_ends_with($host, '.'.$allowedHost)) {
+                $hasTrustedHost = true;
+
+                break;
+            }
+        }
+
+        if (($parts['scheme'] ?? null) !== 'https'
+            || isset($parts['user'])
+            || isset($parts['pass'])
+            || (isset($parts['port']) && $parts['port'] !== 443)
+            || ! $hasTrustedHost) {
+            throw new RuntimeException('Replicate returned an untrusted output image URL.');
+        }
+    }
+
+    protected function isSameHttpsOrigin(string $url, string $trustedUrl): bool
+    {
+        $parts = parse_url($url);
+        $trustedParts = parse_url($trustedUrl);
+
+        return ($parts['scheme'] ?? null) === 'https'
+            && ($trustedParts['scheme'] ?? null) === 'https'
+            && ! isset($parts['user'])
+            && ! isset($parts['pass'])
+            && strtolower((string) ($parts['host'] ?? '')) === strtolower((string) ($trustedParts['host'] ?? ''))
+            && ($parts['port'] ?? 443) === ($trustedParts['port'] ?? 443);
     }
 
     /**
-     * Map validation / moderation failures to a typed exception, logging
-     * the prompt so rejected generations can be audited.
+     * Map validation / moderation failures to a typed exception without
+     * retaining prompt or provider response content in application logs.
      */
     protected function rejectIfInvalid(ImageProvider $provider, string $prompt, RequestException $e): void
     {
@@ -199,14 +259,12 @@ class ReplicateImageGateway implements ImageGateway
         if (in_array($status, [400, 422], true)) {
             Log::warning('Replicate rejected an image generation request.', [
                 'status' => $status,
-                'prompt' => $prompt,
-                'detail' => $e->response->json('detail', $e->response->body()),
+                'prompt_sha256' => hash('sha256', $prompt),
+                'prompt_bytes' => strlen($prompt),
             ]);
 
             throw ImageGenerationRejectedException::forProvider(
                 $provider->name(),
-                (string) $e->response->json('detail', 'validation failed'),
-                $e,
             );
         }
     }
@@ -217,10 +275,16 @@ class ReplicateImageGateway implements ImageGateway
     protected function client(ImageProvider $provider, int $timeout): PendingRequest
     {
         $config = $provider->additionalConfiguration();
+        $baseUrl = GeneratedImageResponseValidator::requireHttpsApiUrl(
+            (string) ($config['url'] ?? 'https://api.replicate.com/v1'),
+            'Replicate',
+        );
 
-        return Http::baseUrl(rtrim($config['url'] ?? 'https://api.replicate.com/v1', '/'))
+        return Http::baseUrl($baseUrl)
             ->withToken($provider->providerCredentials()['key'])
+            ->connectTimeout((int) config('photostudio.http.connect_timeout', 10))
             ->timeout($timeout)
+            ->withOptions(['allow_redirects' => false])
             ->throw();
     }
 }

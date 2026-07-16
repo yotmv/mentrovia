@@ -26,6 +26,9 @@ class BusinessFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
+            'account_id' => fn (array $attributes): int => (int) (User::query()
+                ->whereKey((int) $attributes['user_id'])
+                ->value('current_account_id') ?? $attributes['user_id']),
             'name' => fake()->company(),
             'desired_name' => null,
             'dba_status' => YesNoUnsure::No,

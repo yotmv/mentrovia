@@ -5,7 +5,7 @@ use App\Enums\YesNoUnsure;
 use App\Models\Business;
 use App\Models\User;
 
-test('the sidebar shows every primary nav item in the final v1 order', function () {
+test('the sidebar expresses the primary user journey', function () {
     $user = User::factory()->create();
     Business::factory()->operatingDba()->for($user)->create();
     $this->actingAs($user);
@@ -13,19 +13,9 @@ test('the sidebar shows every primary nav item in the final v1 order', function 
     $this->get(route('dashboard'))
         ->assertOk()
         ->assertSeeInOrder([
-            'Overview',
-            'Company Profile',
-            'Guidance',
-            'Roadmap',
-            'Tasks',
-            'Advisor',
-            'Knowledge',
-            'Marketing',
-            'Projects',
-            'Branding',
-            'Advertising',
+            'Your business', 'Today', 'Business', 'Plan and operate', 'Plan', 'Tasks', 'Guides',
+            'Ask and learn', 'Advisor', 'Knowledge', 'Grow', 'Growth workspace',
         ])
-        ->assertSee('Dashboard')
         ->assertSee('Settings');
 });
 
@@ -37,16 +27,8 @@ test('every sidebar link targets a resolvable route', function () {
     $response = $this->get(route('dashboard'))->assertOk();
 
     foreach ([
-        route('dashboard'),
-        route('business.intake'),
-        route('roadmap'),
-        route('tasks.index'),
-        route('advisor'),
-        route('knowledge.articles.index'),
-        route('projects.index'),
-        route('branding'),
-        route('advertising'),
-        route('profile.edit'),
+        route('dashboard'), route('business.overview'), route('roadmap'), route('tasks.index'),
+        route('guides.index'), route('advisor'), route('knowledge.articles.index'), route('grow'), route('profile.edit'),
     ] as $href) {
         $response->assertSee($href, escape: false);
     }
@@ -57,20 +39,11 @@ test('every sidebar destination loads for a user with a business profile', funct
     Business::factory()->operatingDba()->for($user)->create();
     $this->actingAs($user);
 
-    foreach ([
-        'dashboard',
-        'business.intake',
-        'roadmap',
-        'tasks.index',
-        'advisor',
-        'knowledge.articles.index',
-        'projects.index',
-        'branding',
-        'advertising',
-        'profile.edit',
-    ] as $route) {
+    foreach (['dashboard', 'business.overview', 'roadmap', 'tasks.index', 'guides.index', 'advisor', 'knowledge.articles.index', 'grow', 'profile.edit'] as $route) {
         $this->get(route($route))->assertOk();
     }
+
+    $this->get(route('guides.show', 'formation'))->assertOk();
 });
 
 test('admin nav items are hidden from non-admin users', function () {
@@ -86,6 +59,7 @@ test('admin nav items are hidden from non-admin users', function () {
 
 test('admin nav items are visible to admins and their destinations load', function () {
     $admin = User::factory()->admin()->create();
+    Business::factory()->operatingDba()->for($admin)->create();
     $this->actingAs($admin);
 
     $this->get(route('dashboard'))
@@ -97,7 +71,7 @@ test('admin nav items are visible to admins and their destinations load', functi
     $this->get(route('admin.knowledge.articles.index'))->assertOk();
 });
 
-test('the roadmap cross-links into the branding, advertising, tasks, advisor, and knowledge modules', function () {
+test('the roadmap cross-links into growth, tasks, advisor, and guides', function () {
     $user = User::factory()->create();
     Business::factory()->operatingDba()->for($user)->create();
     $this->actingAs($user);
@@ -108,13 +82,13 @@ test('the roadmap cross-links into the branding, advertising, tasks, advisor, an
         ->assertSee(route('advertising'), escape: false)
         ->assertSee(route('tasks.index'), escape: false)
         ->assertSee(route('advisor'), escape: false)
-        ->assertSee(route('knowledge.articles.index', ['category' => 'sales_tax']), escape: false)
+        ->assertSee(route('guides.show', 'sales-tax'), escape: false)
         ->assertSee('Generate a brand kit')
         ->assertSee('Generate your 30-day marketing plan')
         ->assertSee('Open your task list');
 });
 
-test('dashboard risk flags link into the module that resolves them', function () {
+test('dashboard risk flags link into the guide that resolves them', function () {
     $user = User::factory()->create();
     Business::factory()->for($user)->create([
         'first_sale_on' => now()->subMonth(),
@@ -127,22 +101,21 @@ test('dashboard risk flags link into the module that resolves them', function ()
 
     $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('Open banking checklist')
-        ->assertSee(route('banking-setup'), escape: false)
-        ->assertSee('Read the bookkeeping guidance')
-        ->assertSee(route('knowledge.articles.index', ['category' => 'accounting']), escape: false)
-        ->assertSee('Update your company profile')
-        ->assertSee('Ask the Advisor');
+        ->assertSee('Open the banking guide')
+        ->assertSee(route('guides.show', 'banking'), escape: false)
+        ->assertSee('Open the bookkeeping guide')
+        ->assertSee(route('guides.show', 'bookkeeping'), escape: false)
+        ->assertSee('Open the formation guide');
 });
 
-test('dashboard next actions link into their module guides', function () {
+test('dashboard next actions retain their contextual destinations', function () {
     $user = User::factory()->create();
     Business::factory()->startingFromScratch()->for($user)->create();
     $this->actingAs($user);
 
     $this->get(route('dashboard'))
         ->assertOk()
-        ->assertSee('The next work, in order.')
+        ->assertSee('Do this next')
         ->assertSee('Generate name ideas in Branding')
         ->assertSee(route('branding'), escape: false);
 });

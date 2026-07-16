@@ -2,10 +2,19 @@
 
 namespace App\Ai\Images;
 
+use App\Enums\AiModelPurpose;
+use App\Models\User;
+use App\Services\Ai\AiAccountGate;
+use App\Services\Ai\AiExecutionContext;
+use App\Services\Ai\AiOperationResultMetadata;
+use App\Services\Ai\AuditedAiExecutor;
+use App\Services\Ai\ByokOpenRouterProviderFactory;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Laravel\Ai\Responses\AgentResponse;
 use Laravel\Ai\Responses\StructuredAgentResponse;
 use Throwable;
 
@@ -13,6 +22,12 @@ use function Laravel\Ai\agent;
 
 class ImageModelArbiter
 {
+    public function __construct(
+        private AuditedAiExecutor $executor,
+        private AiAccountGate $gate,
+        private ByokOpenRouterProviderFactory $byokProviders,
+    ) {}
+
     /**
      * Ask a free LLM to make the final ordered pick from the shortlist.
      * Returns the validated choice ids, or null when the arbiter is
@@ -21,12 +36,19 @@ class ImageModelArbiter
      * @param  Collection<int, ImageModelCandidate>  $candidates
      * @return array<int, string>|null
      */
-    public function pick(ImageRequirements $requirements, Collection $candidates, int $count): ?array
-    {
+    public function pick(
+        ImageRequirements $requirements,
+        Collection $candidates,
+        int $count,
+        ?User $user = null,
+        ?int $accountId = null,
+    ): ?array {
         $config = config('photostudio.chooser.llm');
 
-        if (! ($config['enabled'] ?? false)
-            || blank(config("ai.providers.{$config['provider']}.key"))
+        if (! $user instanceof User
+            || ! ($config['enabled'] ?? false)
+            || (blank(config("ai.providers.{$config['provider']}.key"))
+                && $this->gate->activeByokModels($user, AiModelPurpose::Auto, $accountId) === null)
             || $candidates->count() <= 1) {
             return null;
         }
@@ -49,17 +71,32 @@ class ImageModelArbiter
         }
 
         try {
-            $response = agent(
+            $agent = agent(
                 instructions: $this->instructions(),
                 schema: fn (JsonSchema $schema) => [
                     'choice_ids' => $schema->array()->items($schema->string())->required(),
                     'reason' => $schema->string()->required(),
                 ],
-            )->prompt(
-                $this->prompt($requirements, $candidates, $count),
-                provider: $config['provider'],
-                model: $config['model'],
-                timeout: $config['timeout'] ?? 20,
+            );
+            $prompt = $this->prompt($requirements, $candidates, $count);
+            $response = $this->executor->execute(
+                $user,
+                AiModelPurpose::Auto,
+                $config['provider'],
+                $config['model'],
+                $prompt,
+                function (AiExecutionContext $context) use ($agent, $prompt, $config): AgentResponse {
+                    if (! $context->usesByok()) {
+                        return $agent->prompt($prompt, provider: $context->provider, model: $context->model, timeout: $config['timeout'] ?? 20);
+                    }
+
+                    $provider = $this->byokProviders->make((string) $context->credential?->secret);
+
+                    return $provider->prompt(new AgentPrompt($agent, $prompt, [], $provider, $context->model, $config['timeout'] ?? 20));
+                },
+                fn (AgentResponse $response): string => $response->text,
+                resultMetadata: fn (AgentResponse $response): AiOperationResultMetadata => AiOperationResultMetadata::fromResponse($response),
+                account: $accountId,
             );
 
             $structured = $response instanceof StructuredAgentResponse ? $response->toArray() : [];
@@ -83,7 +120,7 @@ class ImageModelArbiter
             return $choiceIds;
         } catch (Throwable $e) {
             Log::warning('Image model arbiter failed; falling back to heuristic ranking.', [
-                'exception' => $e->getMessage(),
+                'exception_class' => $e::class,
             ]);
 
             return null;

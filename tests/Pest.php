@@ -1,5 +1,13 @@
 <?php
 
+use App\Actions\Users\EraseUserAccount;
+use App\Jobs\EraseUserAccountData;
+use App\Jobs\EraseWorkspaceData;
+use App\Models\AccountErasureProgress;
+use App\Models\AccountErasureTarget;
+use App\Models\User;
+use App\Models\WorkspaceErasureProgress;
+use App\Services\WorkspaceErasureService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,4 +55,62 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+function advanceUserErasureToWorkspaceHandoff(int $userId, int $maxAttempts = 200): void
+{
+    for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+        if (User::query()->find($userId) === null) {
+            return;
+        }
+
+        if (AccountErasureProgress::query()->where('user_id', $userId)->value('phase') === 'workspace_erasure') {
+            return;
+        }
+
+        (new EraseUserAccountData($userId))->handle(app(EraseUserAccount::class));
+    }
+
+    throw new RuntimeException('User erasure did not reach the workspace handoff.');
+}
+
+function simulateWorkspaceErasureAndFinishUser(int $userId): void
+{
+    advanceUserErasureToWorkspaceHandoff($userId);
+
+    (new EraseUserAccountData($userId))->handle(app(EraseUserAccount::class));
+
+    $targetAccountIds = AccountErasureTarget::query()
+        ->where('user_id', $userId)
+        ->where('resource_type', 'account')
+        ->pluck('resource_id');
+
+    foreach ($targetAccountIds as $accountId) {
+        for ($attempt = 0; $attempt < 20; $attempt++) {
+            $workspaceProgress = WorkspaceErasureProgress::query()->where('account_id', $accountId)->first();
+
+            if ($workspaceProgress?->completed_at !== null) {
+                break;
+            }
+
+            if (! is_string($workspaceProgress?->dispatch_token)) {
+                throw new RuntimeException('Workspace erasure was not dispatched.');
+            }
+
+            (new EraseWorkspaceData((int) $accountId, $workspaceProgress->dispatch_token))
+                ->handle(app(WorkspaceErasureService::class));
+        }
+
+        if (WorkspaceErasureProgress::query()->where('account_id', $accountId)->whereNotNull('completed_at')->doesntExist()) {
+            throw new RuntimeException('Workspace erasure did not complete.');
+        }
+    }
+
+    for ($attempt = 0; $attempt < 3 && User::query()->find($userId) !== null; $attempt++) {
+        (new EraseUserAccountData($userId))->handle(app(EraseUserAccount::class));
+    }
+
+    if (User::query()->find($userId) !== null) {
+        throw new RuntimeException('User erasure did not finish after workspace erasure.');
+    }
 }

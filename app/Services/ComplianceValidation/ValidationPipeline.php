@@ -4,6 +4,7 @@ namespace App\Services\ComplianceValidation;
 
 use App\Ai\Text\Contracts\TextRoleGenerator;
 use App\Ai\Text\TextGenerationRequest;
+use App\Enums\AccountCapability;
 use App\Enums\TextGenerationRole;
 use App\Enums\ValidationDecision;
 use App\Enums\ValidationRunStatus;
@@ -12,7 +13,10 @@ use App\Models\KnowledgeArticle;
 use App\Models\User;
 use App\Models\ValidationRun;
 use App\Models\ValidationVote;
+use App\Services\Accounts\AccountMutationGate;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ValidationPipeline
@@ -29,37 +33,59 @@ class ValidationPipeline
     public function __construct(
         protected TextRoleGenerator $generator,
         protected ValidationGuardrail $guardrail,
+        protected AccountMutationGate $accountMutationGate,
     ) {}
 
+    /**
+     * @param  array<string, mixed>|null  $businessProfileContext
+     * @param  array{revision: int, fingerprint: string}|null  $profileBinding
+     */
     public function validate(
         KnowledgeArticle $article,
         ?User $user = null,
         ?Business $business = null,
         ?string $question = null,
+        ?array $businessProfileContext = null,
+        ?array $profileBinding = null,
     ): ValidationPipelineResult {
         $article->loadMissing('sources');
         $business?->loadMissing('profileAnswers');
 
         $guardrails = $this->guardrail->inspect($article);
         $normalizedRequest = $this->normalizedRequest($article, $question, $guardrails);
-        $contextSnapshot = $this->contextSnapshot($article, $business, $guardrails);
-        $userId = $business instanceof Business ? $business->user_id : $user?->id;
+        $providerContext = $this->providerContextSnapshot($article, $business, $guardrails, $businessProfileContext);
+        $persistedContext = $this->persistedContextSnapshot($article, $business, $guardrails, $businessProfileContext, $profileBinding);
+        $userId = $user instanceof User ? $user->id : $business?->user_id;
+        $actor = $user ?? ($business instanceof Business ? $business->user : null);
+        $accountId = $business?->account_id;
 
-        $run = ValidationRun::create([
-            'knowledge_article_id' => $article->id,
-            'user_id' => $userId,
-            'business_id' => $business?->id,
-            'normalized_request' => $normalizedRequest,
-            'context_snapshot' => $contextSnapshot,
-            'status' => ValidationRunStatus::Running,
-            'flags' => $guardrails['flags'],
-            'concerns' => $guardrails['concerns'],
-            'metadata' => [
-                'pipeline' => 'compliance-validation-v1',
-                'guardrail_decision' => $guardrails['decision']?->value,
-            ],
-            'started_at' => now(),
-        ]);
+        $actorUserId = $actor?->id;
+
+        $run = DB::transaction(function () use ($accountId, $actorUserId, $article, $userId, $business, $normalizedRequest, $persistedContext, $guardrails): ValidationRun {
+            if ($accountId !== null) {
+                if ($actorUserId === null) {
+                    throw new AuthorizationException;
+                }
+
+                $this->accountMutationGate->lockMemberOrFail($accountId, $actorUserId, AccountCapability::HostedAi);
+            }
+
+            return ValidationRun::create([
+                'knowledge_article_id' => $article->id,
+                'user_id' => $userId,
+                'business_id' => $business?->id,
+                'normalized_request' => $normalizedRequest,
+                'context_snapshot' => $persistedContext,
+                'status' => ValidationRunStatus::Running,
+                'flags' => $guardrails['flags'],
+                'concerns' => $guardrails['concerns'],
+                'metadata' => [
+                    'pipeline' => 'compliance-validation-v1',
+                    'guardrail_decision' => $guardrails['decision']?->value,
+                ],
+                'started_at' => now(),
+            ]);
+        }, attempts: 3);
 
         try {
             $reviewerResponses = [];
@@ -67,13 +93,17 @@ class ValidationPipeline
             foreach ($this->reviewerRoles as $role) {
                 $reviewerResponses[] = $this->storeVote(
                     $run,
-                    $this->generate($role, $normalizedRequest, $contextSnapshot, $reviewerResponses),
+                    $this->generate($role, $normalizedRequest, $providerContext, $reviewerResponses, $actor),
+                    $accountId,
+                    $actorUserId,
                 );
             }
 
             $finalResponse = $this->storeVote(
                 $run,
-                $this->generate(TextGenerationRole::FinalJudge, $normalizedRequest, $contextSnapshot, $reviewerResponses),
+                $this->generate(TextGenerationRole::FinalJudge, $normalizedRequest, $providerContext, $reviewerResponses, $actor),
+                $accountId,
+                $actorUserId,
             );
 
             $decision = $this->aggregateDecision($guardrails['decision'], [
@@ -83,7 +113,7 @@ class ValidationPipeline
 
             $allResponses = collect($reviewerResponses)->push($finalResponse);
 
-            $run->update([
+            $this->updateRun($run, $accountId, $actorUserId, [
                 'status' => ValidationRunStatus::Completed,
                 'aggregate_decision' => $decision,
                 'final_model_role' => TextGenerationRole::FinalJudge,
@@ -108,9 +138,12 @@ class ValidationPipeline
 
             return new ValidationPipelineResult($run->refresh(), ValidationRunStatus::Completed, $decision);
         } catch (Throwable $e) {
-            report($e);
+            Log::error('Compliance validation pipeline failed.', [
+                'validation_run_id' => $run->id,
+                'exception_class' => $e::class,
+            ]);
 
-            $run->update([
+            $this->updateRun($run, $accountId, $actorUserId, [
                 'status' => ValidationRunStatus::Failed,
                 'aggregate_decision' => ValidationDecision::AdminReviewRequired,
                 'flags' => $this->mergedStrings($guardrails['flags'], ['pipeline_error']),
@@ -136,6 +169,7 @@ class ValidationPipeline
         array $normalizedRequest,
         array $contextSnapshot,
         array $priorResponses,
+        ?User $user,
     ): ValidationModelResponse {
         return ValidationModelResponse::fromTextResult(
             $this->generator->generate(TextGenerationRequest::make(
@@ -154,6 +188,7 @@ class ValidationPipeline
                         ])
                         ->all(),
                 ],
+                $user,
             )),
         );
     }
@@ -165,9 +200,22 @@ class ValidationPipeline
         return "Act as the {$roleLabel} for a Texas small-business compliance validation run. Return only JSON with: decision, confidence, flags, concerns, and rationale. Use one decision value from: approved_current, approved_with_caveats, needs_source_refresh, needs_professional_review, conflicting_sources, not_enough_information, admin_review_required.";
     }
 
-    protected function storeVote(ValidationRun $run, ValidationModelResponse $response): ValidationModelResponse
-    {
-        DB::transaction(function () use ($run, $response): void {
+    protected function storeVote(
+        ValidationRun $run,
+        ValidationModelResponse $response,
+        ?int $accountId,
+        ?int $actorUserId,
+    ): ValidationModelResponse {
+        DB::transaction(function () use ($run, $response, $accountId, $actorUserId): void {
+            if ($accountId !== null) {
+                if ($actorUserId === null) {
+                    throw new AuthorizationException;
+                }
+
+                $this->accountMutationGate->lockMemberOrFail($accountId, $actorUserId, AccountCapability::HostedAi);
+            }
+
+            ValidationRun::query()->lockForUpdate()->findOrFail($run->id);
             ValidationVote::create([
                 'validation_run_id' => $run->id,
                 'model_role' => $response->role,
@@ -184,6 +232,22 @@ class ValidationPipeline
         });
 
         return $response;
+    }
+
+    /** @param array<string, mixed> $attributes */
+    private function updateRun(ValidationRun $run, ?int $accountId, ?int $actorUserId, array $attributes): void
+    {
+        DB::transaction(function () use ($run, $accountId, $actorUserId, $attributes): void {
+            if ($accountId !== null) {
+                if ($actorUserId === null) {
+                    throw new AuthorizationException;
+                }
+
+                $this->accountMutationGate->lockMemberOrFail($accountId, $actorUserId, AccountCapability::HostedAi);
+            }
+
+            ValidationRun::query()->lockForUpdate()->findOrFail($run->id)->update($attributes);
+        }, attempts: 3);
     }
 
     /**
@@ -262,12 +326,32 @@ class ValidationPipeline
 
     /**
      * @param  array{decision: ValidationDecision|null, flags: array<int, string>, concerns: array<int, string>}  $guardrails
+     * @param  array<string, mixed>|null  $businessProfileContext
      * @return array<string, mixed>
      */
-    protected function contextSnapshot(KnowledgeArticle $article, ?Business $business, array $guardrails): array
+    protected function providerContextSnapshot(KnowledgeArticle $article, ?Business $business, array $guardrails, ?array $businessProfileContext = null): array
     {
+        $profileAnswers = [];
+
+        if ($businessProfileContext !== null) {
+            $answers = $businessProfileContext['profile_answers'] ?? [];
+
+            if (is_array($answers)) {
+                foreach ($answers as $answer) {
+                    if (is_array($answer) && is_string($answer['question_key'] ?? null)) {
+                        $profileAnswers[$answer['question_key']] = $answer['answer_value'] ?? null;
+                    }
+                }
+            }
+        } elseif ($business instanceof Business) {
+            foreach ($business->profileAnswers as $answer) {
+                $profileAnswers[$answer->question_key] = $answer->answer_value;
+            }
+        }
+
         return [
-            'business' => $business ? [
+            'business_profile' => $businessProfileContext,
+            'business' => $businessProfileContext['business'] ?? ($business ? [
                 'id' => $business->id,
                 'display_name' => $business->displayName(),
                 'stage' => $business->stage?->value,
@@ -283,12 +367,8 @@ class ValidationPipeline
                 'sells_taxable_services' => $business->sells_taxable_services->value,
                 'has_sales_tax_permit' => $business->has_sales_tax_permit->value,
                 'has_payroll' => $business->has_payroll,
-            ] : null,
-            'profile_answers' => $business
-                ? $business->profileAnswers
-                    ->mapWithKeys(fn ($answer): array => [$answer->question_key => $answer->answer_value])
-                    ->all()
-                : [],
+            ] : null),
+            'profile_answers' => $profileAnswers,
             'sources' => $article->sources
                 ->map(fn ($source): array => [
                     'name' => $source->source_name,
@@ -297,6 +377,54 @@ class ValidationPipeline
                     'retrieved_at' => $source->retrieved_at?->toDateString(),
                     'effective_date' => $source->effective_date?->toDateString(),
                     'notes' => $source->notes,
+                ])
+                ->all(),
+            'guardrails' => [
+                'decision' => $guardrails['decision']?->value,
+                'flags' => $guardrails['flags'],
+                'concerns' => $guardrails['concerns'],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array{decision: ValidationDecision|null, flags: array<int, string>, concerns: array<int, string>}  $guardrails
+     * @param  array<string, mixed>|null  $businessProfileContext
+     * @param  array{revision: int, fingerprint: string}|null  $profileBinding
+     * @return array<string, mixed>
+     */
+    protected function persistedContextSnapshot(
+        KnowledgeArticle $article,
+        ?Business $business,
+        array $guardrails,
+        ?array $businessProfileContext,
+        ?array $profileBinding,
+    ): array {
+        $pinnedBusiness = is_array($businessProfileContext['business'] ?? null)
+            ? $businessProfileContext['business']
+            : null;
+        $employeeCount = $pinnedBusiness['employee_count'] ?? $business?->employee_count;
+        $usesContractors = $pinnedBusiness['uses_contractors'] ?? $business?->uses_contractors;
+
+        return [
+            'profile_binding' => $profileBinding === null ? null : [
+                'revision' => $profileBinding['revision'],
+                'fingerprint' => $profileBinding['fingerprint'],
+            ],
+            'business_summary' => $business instanceof Business || $pinnedBusiness !== null ? [
+                'state' => $pinnedBusiness['state'] ?? $business?->state,
+                'stage' => $pinnedBusiness['stage'] ?? $business?->stage?->value,
+                'legal_structure' => $pinnedBusiness['legal_structure'] ?? $business?->legal_structure->value,
+                'has_employees' => (int) $employeeCount > 0,
+                'uses_contractors' => (bool) $usesContractors,
+            ] : null,
+            'sources' => $article->sources
+                ->map(fn ($source): array => [
+                    'name' => $source->source_name,
+                    'url' => $source->source_url,
+                    'type' => $source->source_type->value,
+                    'retrieved_at' => $source->retrieved_at?->toDateString(),
+                    'effective_date' => $source->effective_date?->toDateString(),
                 ])
                 ->all(),
             'guardrails' => [

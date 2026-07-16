@@ -12,9 +12,12 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $business_id
- * @property int $user_id
+ * @property int|null $user_id
  * @property int|null $brand_kit_id
  * @property int $version
+ * @property int|null $profile_revision
+ * @property string|null $profile_fingerprint
+ * @property string|null $brand_content_fingerprint
  * @property array<int, string> $ad_angles
  * @property array<int, array{headline: string, body: string, cta: string}> $facebook_instagram_copy
  * @property array<int, array{headline: string, description: string}> $google_ads
@@ -32,7 +35,8 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  */
 #[Fillable([
-    'business_id', 'user_id', 'brand_kit_id', 'version', 'ad_angles',
+    'business_id', 'user_id', 'brand_kit_id', 'version', 'profile_revision',
+    'profile_fingerprint', 'brand_content_fingerprint', 'ad_angles',
     'facebook_instagram_copy', 'google_ads', 'social_posts', 'flyer_copy',
     'image_prompts', 'landing_page_outline', 'thirty_day_plan',
     'provider', 'model', 'config_version', 'raw_response', 'generated_at',
@@ -53,6 +57,7 @@ class AdvertisingKit extends Model
     {
         return [
             'version' => 'integer',
+            'profile_revision' => 'integer',
             'ad_angles' => 'array',
             'facebook_instagram_copy' => 'array',
             'google_ads' => 'array',

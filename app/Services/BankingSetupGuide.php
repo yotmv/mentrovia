@@ -9,7 +9,7 @@ use Illuminate\Support\Collection;
 
 class BankingSetupGuide
 {
-    private const string DoneValue = 'done';
+    public const string DoneValue = 'done';
 
     /**
      * @return list<string>
@@ -99,30 +99,9 @@ class BankingSetupGuide
         );
     }
 
-    public function markCompleted(Business $business, string $key, bool $completed): void
+    public static function profileQuestionKey(string $key): string
     {
-        if (! self::canCompleteKey($key)) {
-            return;
-        }
-
-        if ($key === 'dedicated-checking') {
-            $business->forceFill(['has_business_bank' => $completed])->save();
-
-            return;
-        }
-
-        $questionKey = $this->profileKey($key);
-
-        if (! $completed) {
-            $business->profileAnswers()->where('question_key', $questionKey)->delete();
-
-            return;
-        }
-
-        $business->profileAnswers()->updateOrCreate(
-            ['question_key' => $questionKey],
-            ['answer_value' => self::DoneValue, 'confidence' => 'user_confirmed'],
-        );
+        return 'banking_setup.'.$key;
     }
 
     /**
@@ -242,10 +221,5 @@ class BankingSetupGuide
                 && $answer->answer_value === self::DoneValue)
             ->map(fn (BusinessProfile $answer): string => (string) str($answer->question_key)->after('banking_setup.'))
             ->values();
-    }
-
-    private function profileKey(string $key): string
-    {
-        return 'banking_setup.'.$key;
     }
 }

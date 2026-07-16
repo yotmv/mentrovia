@@ -2,13 +2,13 @@
     <div class="flex flex-wrap items-center gap-2 rounded-lg bg-zinc-50 p-4 dark:bg-white/5">
         <flux:text size="sm" variant="strong">{{ __('Your picks:') }}</flux:text>
         @isset($preferences['name'])
-            <flux:badge size="sm" color="blue">{{ $preferences['name'] }}</flux:badge>
+            <flux:badge size="sm" color="green">{{ $preferences['name'] }}</flux:badge>
         @endisset
         @isset($preferences['tagline'])
-            <flux:badge size="sm" color="blue">{{ $preferences['tagline'] }}</flux:badge>
+            <flux:badge size="sm" color="green">{{ $preferences['tagline'] }}</flux:badge>
         @endisset
         @isset($preferences['color'])
-            <flux:badge size="sm" color="blue">
+            <flux:badge size="sm" color="green">
                 <span class="mr-1 inline-block size-3 rounded-full align-middle inset-ring inset-ring-black/10" style="background-color: {{ $preferences['color'] }}"></span>
                 {{ $preferences['color'] }}
             </flux:badge>

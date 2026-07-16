@@ -4,11 +4,16 @@ namespace App\Services\Branding;
 
 use App\Ai\Text\Contracts\TextRoleGenerator;
 use App\Ai\Text\TextGenerationRequest;
+use App\Enums\AccountCapability;
 use App\Enums\TextGenerationRole;
 use App\Models\BrandKit;
 use App\Models\Business;
 use App\Models\User;
+use App\Services\Accounts\AccountMutationGate;
+use App\Services\BusinessProfileContext;
+use App\Services\BusinessProfileVersionService;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
 
@@ -33,6 +38,9 @@ class BrandKitGenerator
 
     public function __construct(
         protected TextRoleGenerator $generator,
+        protected AccountMutationGate $accountMutationGate,
+        protected BusinessProfileContext $profileContext,
+        protected BusinessProfileVersionService $profileVersions,
     ) {}
 
     /**
@@ -40,59 +48,76 @@ class BrandKitGenerator
      */
     public function generate(User $user, Business $business): BrandKit
     {
-        $business->loadMissing('profileAnswers');
+        $pin = $this->pinProfile($business, $user);
 
         $result = $this->generator->generate(TextGenerationRequest::make(
             TextGenerationRole::BrandCopy,
             $this->prompt(),
             [
-                'business' => $this->businessContext($business),
+                'business' => $pin['context'],
                 'style_reference' => $this->styleReference(),
             ],
+            $user,
         ));
 
         $payload = $this->decodePayload($result->text);
 
-        return BrandKit::create([
-            'business_id' => $business->id,
-            'user_id' => $user->id,
-            'version' => $this->nextVersion($business),
-            'name_ideas' => $this->strings(Arr::get($payload, 'name_ideas')),
-            'tagline_options' => $this->strings(Arr::get($payload, 'tagline_options')),
-            'positioning' => $this->stringOrNull(Arr::get($payload, 'positioning')),
-            'tone_voice' => $this->strings(Arr::get($payload, 'tone_voice')),
-            'color_palette' => $this->colorPalette(Arr::get($payload, 'color_palette')),
-            'font_notes' => $this->strings(Arr::get($payload, 'font_notes')),
-            'image_prompts' => $this->strings(Arr::get($payload, 'image_prompts')),
-            'brand_board_prompt' => $this->stringOrNull(Arr::get($payload, 'brand_board_prompt')),
-            'social_bios' => $this->socialBios(Arr::get($payload, 'social_bios')),
-            'provider' => $result->provider,
-            'model' => $result->model,
-            'config_version' => $result->configVersion,
-            'raw_response' => $payload,
-            'generated_at' => now(),
-        ]);
+        return DB::transaction(function () use ($business, $user, $payload, $result, $pin): BrandKit {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
+
+            return BrandKit::create([
+                'business_id' => $lockedBusiness->id,
+                'user_id' => $user->id,
+                'version' => $this->nextVersion($lockedBusiness),
+                'profile_revision' => $pin['revision'],
+                'profile_fingerprint' => $pin['profile_fingerprint'],
+                'section_profile_revisions' => array_fill_keys(array_keys(self::Sections), $pin['revision']),
+                'marketing_context_fingerprints' => array_fill_keys(array_keys(self::Sections), $pin['marketing_fingerprint']),
+                'name_ideas' => $this->strings(Arr::get($payload, 'name_ideas')),
+                'tagline_options' => $this->strings(Arr::get($payload, 'tagline_options')),
+                'positioning' => $this->stringOrNull(Arr::get($payload, 'positioning')),
+                'tone_voice' => $this->strings(Arr::get($payload, 'tone_voice')),
+                'color_palette' => $this->colorPalette(Arr::get($payload, 'color_palette')),
+                'font_notes' => $this->strings(Arr::get($payload, 'font_notes')),
+                'image_prompts' => $this->strings(Arr::get($payload, 'image_prompts')),
+                'brand_board_prompt' => $this->stringOrNull(Arr::get($payload, 'brand_board_prompt')),
+                'social_bios' => $this->socialBios(Arr::get($payload, 'social_bios')),
+                'provider' => $result->provider,
+                'model' => $result->model,
+                'config_version' => $result->configVersion,
+                'raw_response' => $payload,
+                'generated_at' => now(),
+            ]);
+        }, attempts: 3);
     }
 
     /**
      * Regenerate one section of an existing kit in place, keeping the version.
      */
-    public function regenerateSection(BrandKit $kit, string $section): BrandKit
+    public function regenerateSection(BrandKit $kit, string $section, User $user): BrandKit
     {
         if (! array_key_exists($section, self::Sections)) {
             throw BrandKitGenerationException::unknownSection($section);
         }
 
-        $business = $kit->business()->with('profileAnswers')->firstOrFail();
+        $business = $kit->business()->firstOrFail();
+        $pin = $this->pinProfile($business, $user);
+        $pinnedKit = DB::transaction(function () use ($kit, $business, $user): BrandKit {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+
+            return BrandKit::query()->lockForUpdate()->findOrFail($kit->id);
+        });
 
         $result = $this->generator->generate(TextGenerationRequest::make(
             TextGenerationRole::BrandCopy,
             $this->sectionPrompt($section),
             [
-                'business' => $this->businessContext($business),
+                'business' => $pin['context'],
                 'style_reference' => $this->styleReference(),
-                'current_brand_kit' => $this->kitContext($kit),
+                'current_brand_kit' => $this->kitContext($pinnedKit),
             ],
+            $user,
         ));
 
         $payload = $this->decodePayload($result->text);
@@ -102,16 +127,28 @@ class BrandKitGenerator
             throw BrandKitGenerationException::emptySection($section);
         }
 
-        $kit->update([
-            $section => $value,
-            'preferences' => $this->prunedPreferences($kit, $section, $value),
-            'provider' => $result->provider,
-            'model' => $result->model,
-            'config_version' => $result->configVersion,
-            'generated_at' => now(),
-        ]);
+        return DB::transaction(function () use ($business, $kit, $section, $value, $result, $user, $pin): BrandKit {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedKit = BrandKit::query()->lockForUpdate()->findOrFail($kit->id);
+            $sectionRevisions = $lockedKit->section_profile_revisions ?? [];
+            $marketingFingerprints = $lockedKit->marketing_context_fingerprints ?? [];
+            $sectionRevisions[$section] = $pin['revision'];
+            $marketingFingerprints[$section] = $pin['marketing_fingerprint'];
+            $lockedKit->update([
+                $section => $value,
+                'preferences' => $this->prunedPreferences($lockedKit, $section, $value),
+                'profile_revision' => $pin['revision'],
+                'profile_fingerprint' => $pin['profile_fingerprint'],
+                'section_profile_revisions' => $sectionRevisions,
+                'marketing_context_fingerprints' => $marketingFingerprints,
+                'provider' => $result->provider,
+                'model' => $result->model,
+                'config_version' => $result->configVersion,
+                'generated_at' => now(),
+            ]);
 
-        return $kit->refresh();
+            return $lockedKit->refresh();
+        }, attempts: 3);
     }
 
     protected function sectionPrompt(string $section): string
@@ -206,27 +243,24 @@ class BrandKitGenerator
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{revision: int, profile_fingerprint: string, marketing_fingerprint: string, context: array<string, mixed>}
      */
-    protected function businessContext(Business $business): array
+    protected function pinProfile(Business $business, User $user): array
     {
-        return [
-            'display_name' => $business->displayName(),
-            'existing_name' => $business->name,
-            'desired_name' => $business->desired_name,
-            'stage' => $business->stage?->value,
-            'legal_structure' => $business->legal_structure->value,
-            'industry' => $business->industry,
-            'city' => $business->city,
-            'county' => $business->county,
-            'state' => $business->state,
-            'location_type' => $business->location_type->value,
-            'owner_count' => $business->owner_count,
-            'employee_count' => $business->employee_count,
-            'profile_answers' => $business->profileAnswers
-                ->mapWithKeys(fn ($answer): array => [$answer->question_key => $answer->answer_value])
-                ->all(),
-        ];
+        return DB::transaction(function () use ($business, $user): array {
+            $this->accountMutationGate->lockMemberOrFail($business->account_id, $user->id, AccountCapability::HostedAi);
+            $lockedBusiness = Business::query()->lockForUpdate()->findOrFail($business->id);
+            $lockedBusiness->load('profileAnswers');
+            $version = $this->profileVersions->ensureBaselineLocked($lockedBusiness);
+            $context = $this->profileContext->marketing($lockedBusiness);
+
+            return [
+                'revision' => $version->revision,
+                'profile_fingerprint' => $version->fingerprint,
+                'marketing_fingerprint' => $this->profileContext->marketingFingerprint($lockedBusiness),
+                'context' => $context,
+            ];
+        }, attempts: 3);
     }
 
     /**
