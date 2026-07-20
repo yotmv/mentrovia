@@ -1,0 +1,19 @@
+Meet Mentrovia: a Texas-first AI operating mentor for small-business owners.
+
+Running a business means juggling formation, taxes, banking, payroll, marketing, and recurring compliance. The information exists, but it is fragmented, risky when stale, and rarely organized around one company's actual situation. Mentrovia turns that uncertainty into a clear, executable plan.
+
+This is the Today view for a demo countertop business. Mentrovia reads the company profile, calculates a setup score, identifies the most important next action, surfaces risk flags, and keeps due work visible. The goal is not another chat window. It is a durable operating workspace.
+
+The roadmap converts guidance into dependency-aware work. Each item keeps its planning target, assignee, execution status, notes, and evidence separate from profile completeness. That means a profile update can refresh recommendations without erasing the team's real progress.
+
+Owners can open practical playbooks for formation, sales tax, bookkeeping, banking, hiring, and owner pay. The Advisor then combines the business profile with Mentrovia's curated knowledge, checks source freshness, runs high-risk answers through a multi-model validation pipeline, and clearly flags caveats or professional-review needs.
+
+The same profile can generate a brand kit and advertising system, so strategy becomes usable names, positioning, colors, copy, campaigns, and image prompts instead of disconnected AI outputs.
+
+The AI Trust Center makes model routing, account limits, concurrency, cost, and the audit ledger visible. Teams can use hosted models or bring their own OpenRouter key, while every paid AI operation remains account-scoped and auditable.
+
+Mentrovia is built with Laravel 13, Livewire 4, Flux UI, Tailwind CSS 4, MariaDB, the Laravel AI SDK, OpenRouter, Stripe, and Pest.
+
+For OpenAI Build Week, I used Codex with GPT-5.6 to meaningfully extend an existing prototype. Codex helped audit the architecture, plan cross-cutting changes, implement secure multi-user workspaces, resumable onboarding, profile versioning, collaborative roadmaps, AI controls, billing, lifecycle recovery, and a large automated test suite. GPT-5.6 was especially valuable for reasoning across hundreds of related files while preserving authorization, account isolation, migration safety, and framework conventions.
+
+Mentrovia is educational guidance, not a lawyer or CPA. Next, I want to expand the verified knowledge system state by state, add more operator workflows, and make trustworthy business mentorship accessible to every owner.

@@ -1,0 +1,76 @@
+ABOUT THE PROJECT
+
+## Inspiration
+
+Small-business owners do not need another chatbot that answers every question from scratch. They need to know what matters now, what comes next, why it matters, and when a decision should be checked with a lawyer, CPA, payroll provider, or official source.
+
+Mentrovia began with a simple idea: turn the fragmented work of starting and operating a business into one durable, trustworthy workspace. The first release is intentionally Texas-first so the guidance can be concrete about formation, sales tax, franchise tax, banking, bookkeeping, hiring, owner pay, branding, and recurring compliance.
+
+## What it does
+
+Mentrovia turns a structured company profile into a personalized operating system:
+
+- A Today view calculates a business setup score, highlights the most important next action, surfaces risk flags, and keeps upcoming work visible.
+- A dependency-aware roadmap separates profile completeness from real execution. Every item can track status, assignee, planning target, notes, evidence, and completion provenance.
+- Practical playbooks explain formation, sales-tax readiness, bookkeeping, business banking, hiring, and owner pay in plain language.
+- Advisor Q&A combines the company profile with curated knowledge, source-freshness metadata, and a multi-model validation pipeline. High-risk answers expose caveats, confidence, citations, and professional-review flags.
+- Brand and advertising generators turn the same profile into positioning, names, taglines, colors, typography, bios, campaign plans, ad copy, and image prompts.
+- An AI Trust Center shows effective model routing, usage, limits, concurrency, estimated and actual cost, and a permanent audit ledger. Workspaces can use hosted models or bring an account-scoped OpenRouter key.
+
+Mentrovia is educational guidance and workflow support. It is not legal, tax, accounting, payroll, or financial advice.
+
+## How we built it
+
+The application is built on Laravel 13 and PHP 8.4, with Livewire 4, Flux UI, Tailwind CSS 4, Alpine.js, MariaDB, and Vite. The Laravel AI SDK provides role-based text and image generation through an OpenRouter-compatible provider layer. Queued jobs handle validation, image generation, derivative processing, cleanup, retries, and recovery. Laravel Cashier and Stripe provide account-level subscriptions and hosted billing flows.
+
+Trust is part of the architecture, not a disclaimer added at the end. Mentrovia keeps knowledge articles cached and versioned, tracks freshness and source coverage, runs risky guidance through factual, contradiction, user-fit, and final-judge stages, and records AI operations in an account-scoped audit ledger. Workspace authorization, encrypted credentials, immutable profile history, idempotent background work, and creator-safe erasure are enforced throughout the data model.
+
+## How we used Codex and GPT-5.6
+
+Mentrovia existed before OpenAI Build Week, so the hackathon work focused on a meaningful production-grade extension. Codex with GPT-5.6 acted as an engineering partner across the repository: auditing the architecture, turning security and product requirements into an implementation plan, tracing authorization and data-flow risks, implementing cross-cutting changes, and repeatedly checking framework conventions and tests.
+
+During the Build Week extension, Codex helped add secure multi-user workspaces, invitation and role management, resumable onboarding, CSV review, immutable profile versions, collaborative roadmap execution, profile-freshness tracking, account-scoped AI policy and BYOK controls, a Trust Center, Stripe billing, lifecycle reconciliation, secure workspace erasure, and extensive test coverage. The dated extension touched 469 files and added more than 43,000 lines across product code, migrations, tests, and support material.
+
+GPT-5.6 was especially valuable when a change crossed hundreds of related files. It helped reason about migration ordering, tenant isolation, stale writes, retry safety, provider failures, and the boundary between profile-derived recommendations and user-owned execution state. That let us move quickly without treating generated code as a black box.
+
+## Challenges we ran into
+
+The hardest problem was preserving user progress while allowing the company profile to evolve. Rebuilding a roadmap from profile answers is easy; refreshing its guidance without overwriting assignees, notes, evidence, or completed work is not. We solved this by separating synchronization from execution state and making updates dependency-aware and conflict-safe.
+
+AI reliability created a second challenge. Provider calls can time out, duplicate, or finish after a worker loses its lease. We added explicit lifecycle state machines, idempotency keys, reconciliation commands, cost reservations, and account-scoped concurrency controls so recovery is observable and safe.
+
+## Accomplishments that we are proud of
+
+- A complete path from onboarding to an executable roadmap, recurring tasks, source-aware advice, and growth tools.
+- Clear trust controls for model routing, budget, auditability, source freshness, and professional-review boundaries.
+- Strong multi-tenant authorization and lifecycle behavior covered by more than 100 Pest test files.
+- A polished responsive interface that works with both Flux UI Free and Pro.
+- An open-source foundation that can grow beyond one state without hiding how advice is produced.
+
+## What we learned
+
+Useful AI products need durable state more than clever prompts. The highest-value work was deciding what the system should remember, what it may safely recompute, and what belongs to the owner. We also learned that trustworthy guidance requires freshness, provenance, cost, and failure behavior to be visible product concepts.
+
+## What's next
+
+Next we will expand the verified knowledge system state by state, add proactive deadline and source-refresh signals, deepen collaboration with accountants and attorneys, and build more operator workflows for licensing, hiring, insurance, finance, and growth. The long-term goal is a transparent small-business mentor that helps every owner move forward with more clarity and fewer costly surprises.
+
+
+BUILT WITH TAGS
+
+Codex, GPT-5.6, OpenAI, Laravel, PHP, Livewire, Flux UI, Tailwind CSS, Alpine.js, Laravel AI SDK, OpenRouter, OpenAI API, MariaDB, MySQL, Laravel Cashier, Stripe, Pest, Vite, Blade, GitHub Actions, Replicate, Stability AI
+
+
+YOUTUBE UPLOAD
+
+Title: Mentrovia — AI Operating Mentor for Small Businesses | OpenAI Build Week
+
+Description:
+
+Mentrovia is a Texas-first AI operating mentor that turns a small-business profile into a dependency-aware roadmap, recurring work, source-checked guidance, and practical brand and marketing outputs.
+
+Built with Codex + GPT-5.6 for OpenAI Build Week.
+
+Code: https://github.com/yotmv/mentrovia
+
+Mentrovia provides educational guidance and workflow support. It is not legal, tax, accounting, payroll, or financial advice.
